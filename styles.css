@@ -193,7 +193,9 @@ button { color: inherit; }
 .unread-sheet h2 { font-family:"Fredoka"; font-size:25px; margin:4px 42px 10px 0; }
 #unreadBody { line-height:1.55; font-size:16px; }
 .unread-meta { margin:14px 0 18px; color:var(--muted); font-size:12px; font-weight:700; }
-.read-button { width:100%; padding:14px 16px; font-size:15px; }
+.read-buttons { display:grid; gap:10px; }
+.read-person-button { width:100%; border:0; background:var(--coral); color:white; font-weight:800; border-radius:14px; padding:14px 16px; font-size:15px; cursor:pointer; }
+.read-person-button.done { background:var(--green-soft); color:#0a715a; cursor:default; }
 .inline-link { color:#1769aa; text-decoration:underline; text-underline-offset:2px; word-break:break-word; }
 @media (min-width: 700px) {
   .main-content { padding-left:28px; padding-right:28px; }
