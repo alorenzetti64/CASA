@@ -54,6 +54,10 @@ function matchAsEvent(m){
   return {id:`match:${m.id}`,title:m.title,start_date:startDate,end_date:startDate,start_time:m.all_day?null:romeTime(m.start),all_day:!!m.all_day,location:m.location||"",description:"",source:"match",match:m};
 }
 function calendarItems(){ return [...events,...matches.map(matchAsEvent)]; }
+function upcomingMatches(){
+  const today=todayKey();
+  return matches.filter(m=>String(m.start||"").slice(0,10)>=today);
+}
 function recipientsOf(p){ return Array.isArray(p.recipients)&&p.recipients.length?p.recipients:AUTHORS; }
 function readsOf(p){ return new Set(postReads.filter(r=>r.post_id===p.id).map(r=>r.reader)); }
 function catPill(c){ return `<span class="category-pill ${klass[c]||""}">${emoji[c]||"📌"} ${esc(c)}</span>`; }
@@ -114,7 +118,7 @@ function matchCard(m){
 function renderMatches(){
   const box=$("#matchList");
   if(!box) return;
-  const upcoming=matches.filter(m=>romeDateKey(m.start)>=todayKey());
+  const upcoming=upcomingMatches();
   box.innerHTML=upcoming.length?upcoming.map(matchCard).join(""):`<div class="empty-state">Nessuna partita in programma da oggi in avanti.</div>`;
 }
 function menuHtml(type,id){
