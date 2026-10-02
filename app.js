@@ -187,7 +187,7 @@ async function loadData(){
   posts=p.data||[]; events=e.data||[]; postReads=r.data||[];
   await matchPromise;
   renderAll();
-  if(currentPerson) showUnreadPopup();
+  showUnreadPopup();
 }
 
 function updatePersonUI(){
@@ -210,21 +210,36 @@ async function setPerson(name){
   await syncPushPerson();
   showUnreadPopup();
 }
-function unreadPostsForCurrent(){
-  if(!currentPerson) return [];
-  const read=new Set(postReads.filter(r=>r.reader===currentPerson).map(r=>r.post_id));
+function shortReaderName(name){
+  return name==="Luana"?"Lua":name==="Manuela"?"Manu":name;
+}
+function incompletePosts(){
   return posts
-    .filter(p=>recipientsOf(p).includes(currentPerson)&&!read.has(p.id)&&!dismissedUnread.has(p.id))
+    .filter(p=>{
+      const read=readsOf(p);
+      return recipientsOf(p).some(name=>!read.has(name))&&!dismissedUnread.has(p.id);
+    })
     .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
 }
+function renderUnreadButtons(p){
+  const read=readsOf(p);
+  $("#readButtons").innerHTML=recipientsOf(p).map(name=>{
+    const done=read.has(name);
+    const label=`${shortReaderName(name)} ha letto`;
+    return done
+      ? `<button type="button" class="read-person-button done" disabled>✓ ${esc(label)}</button>`
+      : `<button type="button" class="read-person-button" data-mark-reader="${esc(name)}">${esc(label)}</button>`;
+  }).join("");
+}
 function showUnreadPopup(){
-  if(!currentPerson||!$("#unreadSheet").classList.contains("hidden")) return;
-  const p=unreadPostsForCurrent()[0];
+  if(!$("#unreadSheet").classList.contains("hidden")) return;
+  const p=incompletePosts()[0];
   if(!p) return;
   currentUnreadPostId=p.id;
   $("#unreadTitle").innerHTML=linkify(p.title);
   $("#unreadBody").innerHTML=linkify(p.body||"",true);
   $("#unreadMeta").textContent=`${p.author||"Famiglia"} · ${postTime(p.created_at)}`;
+  renderUnreadButtons(p);
   $("#unreadSheet").classList.remove("hidden");
 }
 function dismissUnread(){
@@ -232,17 +247,26 @@ function dismissUnread(){
   currentUnreadPostId=null;
   $("#unreadSheet").classList.add("hidden");
 }
-async function markCurrentRead(){
-  if(!currentPerson||!currentUnreadPostId) return;
+async function markReaderRead(reader){
+  if(!currentUnreadPostId||!AUTHORS.includes(reader)) return;
   const postId=currentUnreadPostId;
-  const {error}=await supabase.from("casa_family_post_reads").insert({post_id:postId,reader:currentPerson});
+  const {error}=await supabase.from("casa_family_post_reads").insert({post_id:postId,reader});
   if(error&&error.code!=="23505"){console.error(error);toast("Non sono riuscito a salvare la lettura");return;}
-  if(!postReads.some(r=>r.post_id===postId&&r.reader===currentPerson)) postReads.push({post_id:postId,reader:currentPerson,read_at:new Date().toISOString()});
-  currentUnreadPostId=null;
-  $("#unreadSheet").classList.add("hidden");
+  if(!postReads.some(r=>r.post_id===postId&&r.reader===reader)) postReads.push({post_id:postId,reader,read_at:new Date().toISOString()});
   renderBoard();
-  toast("Segnato come letto");
-  setTimeout(showUnreadPopup,120);
+
+  const p=posts.find(x=>x.id===postId);
+  if(!p) return;
+  const complete=recipientsOf(p).every(name=>readsOf(p).has(name));
+  if(complete){
+    currentUnreadPostId=null;
+    $("#unreadSheet").classList.add("hidden");
+    toast("Annuncio letto da tutti");
+    setTimeout(showUnreadPopup,120);
+  }else{
+    renderUnreadButtons(p);
+    toast(`${shortReaderName(reader)} segnato come letto`);
+  }
 }
 
 function authorSelector(current){
@@ -418,11 +442,11 @@ async function enablePush(){
 function bind(){
   document.addEventListener("click",async ev=>{
     const person=ev.target.closest("[data-person-choice]"); if(person){await setPerson(person.dataset.personChoice);return;}
+    const reader=ev.target.closest("[data-mark-reader]"); if(reader){await markReaderRead(reader.dataset.markReader);return;}
     const v=ev.target.closest("[data-view]"); if(v){setView(v.dataset.view);return;}
     if(ev.target.closest("#globalAdd")){openChoice();return;}
     if(ev.target.closest("#personButton")){openPersonSheet();return;}
     if(ev.target.closest("#refreshMatches")){await loadMatches(true);return;}
-    if(ev.target.closest("#markReadButton")){await markCurrentRead();return;}
     if(ev.target.closest("#unreadLater")){dismissUnread();return;}
     if(ev.target.closest("[data-close-sheet]")){closeChoice();return;}
     if(ev.target.closest("[data-close-form]")){closeForm();return;}
