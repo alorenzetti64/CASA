@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#fff8f1" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="CASA" />
+  <title>CASA · Famiglia</title>
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <button class="brand" data-view="home" aria-label="Vai alla home">
+        <span class="brand-house">🏠</span>
+        <span>
+          <strong>CASA</strong>
+          <small>Le cose che ci riguardano, tutte nello stesso posto.</small>
+        </span>
+      </button>
+      <button id="notificationButton" class="icon-button" aria-label="Notifiche" title="Notifiche">🔔</button>
+    </header>
+
+    <main id="appMain" class="main-content" aria-live="polite">
+      <section id="view-home" class="view active">
+        <div class="hero-card">
+          <div class="hero-sun">☀️</div>
+          <p id="heroEyebrow" class="eyebrow">BUONGIORNO FAMIGLIA</p>
+          <h1 id="heroTitle">Buongiorno famiglia!</h1>
+          <p id="heroSubtitle">Vediamo cosa ci aspetta oggi.</p>
+          <div class="hero-garden" aria-hidden="true"><span>🌿</span><span>🌼</span><span>🏡</span><span>🌳</span><span>🌷</span></div>
+        </div>
+
+        <div id="notificationBanner" class="notice-banner hidden">
+          <div>
+            <strong>Attiva le notifiche</strong>
+            <p>Ricevi le novità della bacheca e gli eventi del giorno.</p>
+          </div>
+          <button id="enableNotifications" class="primary small">Attiva</button>
+        </div>
+
+        <section class="today-card card">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">OGGI</span>
+              <h2 id="todayLabel">Oggi</h2>
+            </div>
+            <button class="text-button" data-view="calendar">Vedi tutto ›</button>
+          </div>
+          <div id="todayEvents" class="stack-list"></div>
+        </section>
+
+        <div class="home-grid">
+          <button class="home-tile board-tile" data-view="board">
+            <span class="tile-icon">📣</span>
+            <span class="tile-badge hidden" id="boardBadge">0</span>
+            <strong>Bacheca</strong>
+            <small>Ultime notizie dalla famiglia</small>
+          </button>
+          <button class="home-tile calendar-tile" data-view="calendar">
+            <span class="tile-icon">🗓️</span>
+            <strong>Calendario</strong>
+            <small>Prossimi eventi e impegni</small>
+          </button>
+        </div>
+
+        <section class="latest-section">
+          <div class="section-heading compact">
+            <div><span class="section-kicker">ULTIMA NOVITÀ</span><h2>Dalla bacheca</h2></div>
+            <button class="text-button" data-view="board">Apri ›</button>
+          </div>
+          <div id="latestPost"></div>
+        </section>
+
+        <blockquote class="family-quote">“Stesso posto. Più tempo insieme.” <span>❤️</span></blockquote>
+      </section>
+
+      <section id="view-board" class="view">
+        <div class="page-head">
+          <div>
+            <span class="page-icon">📣</span>
+            <h1>Bacheca</h1>
+            <p>Tutte le nostre comunicazioni.</p>
+          </div>
+          <button class="circle-add" data-add="post" aria-label="Aggiungi notizia">+</button>
+        </div>
+        <div id="categoryFilters" class="filter-row"></div>
+        <div id="postList" class="content-list"></div>
+      </section>
+
+      <section id="view-calendar" class="view">
+        <div class="page-head">
+          <div>
+            <span class="page-icon">🗓️</span>
+            <h1>Calendario</h1>
+            <p>I nostri impegni, tutti insieme.</p>
+          </div>
+          <button class="circle-add" data-add="event" aria-label="Aggiungi evento">+</button>
+        </div>
+
+        <section class="calendar-card card">
+          <div class="calendar-toolbar">
+            <button id="prevMonth" class="icon-button" aria-label="Mese precedente">‹</button>
+            <h2 id="calendarMonthLabel"></h2>
+            <button id="nextMonth" class="icon-button" aria-label="Mese successivo">›</button>
+          </div>
+          <div class="weekday-row"><span>Lun</span><span>Mar</span><span>Mer</span><span>Gio</span><span>Ven</span><span>Sab</span><span>Dom</span></div>
+          <div id="calendarGrid" class="calendar-grid"></div>
+        </section>
+
+        <section class="calendar-list-section">
+          <div class="section-heading compact">
+            <div><span class="section-kicker">PROSSIMI EVENTI</span><h2 id="calendarListTitle">In arrivo</h2></div>
+          </div>
+          <div id="eventList" class="content-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <nav class="bottom-nav" aria-label="Navigazione principale">
+      <button class="nav-item active" data-view="home"><span>🏠</span><small>Home</small></button>
+      <button class="nav-item" data-view="board"><span>📣</span><small>Bacheca</small></button>
+      <button id="globalAdd" class="nav-add" aria-label="Aggiungi">+</button>
+      <button class="nav-item" data-view="calendar"><span>🗓️</span><small>Calendario</small></button>
+    </nav>
+  </div>
+
+  <div id="choiceSheet" class="sheet-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="choiceTitle">
+    <div class="sheet choice-sheet">
+      <button class="sheet-close" data-close-sheet aria-label="Chiudi">×</button>
+      <h2 id="choiceTitle">Cosa vuoi aggiungere?</h2>
+      <div class="choice-grid">
+        <button data-add="post" class="choice-card purple"><span>📝</span><strong>Una notizia</strong><small>Condividi un avviso, una comunicazione o un’idea.</small></button>
+        <button data-add="event" class="choice-card green"><span>🗓️</span><strong>Un evento</strong><small>Aggiungi un impegno al calendario della famiglia.</small></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="formSheet" class="sheet-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="formTitle">
+    <form id="editorForm" class="sheet form-sheet">
+      <div class="form-sheet-head">
+        <button type="button" class="sheet-close left" data-close-form aria-label="Chiudi">‹</button>
+        <h2 id="formTitle">Nuova notizia</h2>
+        <button type="submit" class="primary small" id="formSubmit">Pubblica</button>
+      </div>
+      <input type="hidden" id="editId" />
+      <input type="hidden" id="editType" />
+      <div id="formFields"></div>
+    </form>
+  </div>
+
+  <div id="toast" class="toast hidden" role="status"></div>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
