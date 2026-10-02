@@ -101,6 +101,8 @@ button { color: inherit; }
 .category-pill.idea { background:#e4f7ee; color:#1b7e62; }
 .post-card h3, .event-card h3 { margin:0 38px 6px 0; font-size:18px; }
 .post-card p, .event-card p { margin:0; line-height:1.45; }
+.inline-link { color:#1769aa; text-decoration:underline; text-underline-offset:2px; word-break:break-word; }
+.inline-link:hover { opacity:.8; }
 .post-footer { margin-top:12px; color:var(--muted); font-size:12px; font-weight:700; }
 .more-button { position:absolute; top:12px; right:10px; border:0; background:#f6f2ed; border-radius:50%; width:32px; height:32px; cursor:pointer; }
 .calendar-card { padding:15px; }
