@@ -163,6 +163,9 @@ async function removeItem(type,id){
 }
 
 function urlB64(s){ const pad="=".repeat((4-s.length%4)%4), b=(s+pad).replace(/-/g,"+").replace(/_/g,"/"), raw=atob(b); return Uint8Array.from([...raw].map(c=>c.charCodeAt(0))); }
+function isStandalone(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
 function updateNotificationUI(){
   const supported="Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
   const granted=supported && Notification.permission==="granted";
@@ -170,18 +173,51 @@ function updateNotificationUI(){
   $("#notificationButton").textContent=granted?"🔔":"🔕";
 }
 async function enablePush(){
-  if(!("Notification" in window)||!("serviceWorker" in navigator)||!("PushManager" in window)){toast("Notifiche non supportate su questo dispositivo");return;}
-  if(/iPhone|iPad|iPod/.test(navigator.userAgent)&&!window.matchMedia("(display-mode: standalone)").matches){toast("Su iPhone aggiungi prima CASA alla schermata Home");return;}
-  const perm=await Notification.requestPermission(); if(perm!=="granted"){updateNotificationUI();toast("Notifiche non attivate");return;}
+  const supported="Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
+  if(!supported){toast("Questo dispositivo non supporta le notifiche web");return;}
+  const isiOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  if(isiOS && !isStandalone()){toast("Apri CASA dall’icona salvata nella schermata Home");return;}
+
   try{
+    const perm=Notification.permission==="granted" ? "granted" : await Notification.requestPermission();
+    if(perm!=="granted"){
+      updateNotificationUI();
+      toast(perm==="denied" ? "Le notifiche sono bloccate nelle impostazioni del telefono" : "Notifiche non attivate");
+      return;
+    }
+
+    toast("Attivazione notifiche…");
+
     const reg=await navigator.serviceWorker.ready;
-    const kr=await fetch(PUSH_URL+"?action=public-key"); const {publicKey}=await kr.json();
+    const kr=await fetch(PUSH_URL+"?action=public-key");
+    if(!kr.ok) throw new Error("public-key:"+kr.status);
+    const {publicKey}=await kr.json();
+    if(!publicKey) throw new Error("public-key-missing");
+
     let sub=await reg.pushManager.getSubscription();
     if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64(publicKey)});
-    const j=sub.toJSON();
-    const {error}=await supabase.from("casa_family_push_subscriptions").upsert({endpoint:j.endpoint,p256dh:j.keys.p256dh,auth:j.keys.auth,device_label:navigator.userAgent.slice(0,180),updated_at:new Date().toISOString()},{onConflict:"endpoint"});
-    if(error) throw error; updateNotificationUI(); toast("Notifiche attivate");
-  }catch(e){console.error(e);toast("Non sono riuscito ad attivare le notifiche");}
+
+    const jr=sub.toJSON();
+    const sr=await fetch(PUSH_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        action:"subscribe",
+        subscription:jr,
+        deviceLabel:navigator.userAgent.slice(0,180)
+      })
+    });
+    if(!sr.ok) throw new Error("subscribe:"+sr.status);
+
+    updateNotificationUI();
+    toast("Notifiche attivate");
+  }catch(e){
+    console.error("CASA push activation error",e);
+    const m=String(e?.message||e);
+    if(m.includes("NotAllowedError")) toast("Permesso notifiche negato dal telefono");
+    else if(m.includes("AbortError")) toast("Il telefono ha interrotto l’attivazione: riprova");
+    else toast("Non sono riuscito ad attivare le notifiche");
+  }
 }
 
 function bind(){
