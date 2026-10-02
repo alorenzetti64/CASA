@@ -190,6 +190,61 @@ async function loadData(){
   if(currentPerson) showUnreadPopup();
 }
 
+function updatePersonUI(){
+  const b=$("#personButton");
+  if(!b) return;
+  b.textContent=currentPerson?"👤":"👤";
+  b.title=currentPerson?`Stai usando CASA come ${currentPerson}. Tocca per cambiare.`:"Scegli chi sta usando CASA";
+  b.setAttribute("aria-label",b.title);
+}
+function openPersonSheet(){
+  $("#personSheet").classList.remove("hidden");
+}
+async function setPerson(name){
+  if(!AUTHORS.includes(name)) return;
+  currentPerson=name;
+  localStorage.setItem("casaPerson",name);
+  $("#personSheet").classList.add("hidden");
+  updatePersonUI();
+  renderBoard();
+  await syncPushPerson();
+  showUnreadPopup();
+}
+function unreadPostsForCurrent(){
+  if(!currentPerson) return [];
+  const read=new Set(postReads.filter(r=>r.reader===currentPerson).map(r=>r.post_id));
+  return posts
+    .filter(p=>recipientsOf(p).includes(currentPerson)&&!read.has(p.id)&&!dismissedUnread.has(p.id))
+    .sort((a,b)=>new Date(a.created_at)-new Date(b.created_at));
+}
+function showUnreadPopup(){
+  if(!currentPerson||!$("#unreadSheet").classList.contains("hidden")) return;
+  const p=unreadPostsForCurrent()[0];
+  if(!p) return;
+  currentUnreadPostId=p.id;
+  $("#unreadTitle").textContent=p.title;
+  $("#unreadBody").innerHTML=linkify(p.body||"",true);
+  $("#unreadMeta").textContent=`${p.author||"Famiglia"} · ${postTime(p.created_at)}`;
+  $("#unreadSheet").classList.remove("hidden");
+}
+function dismissUnread(){
+  if(currentUnreadPostId) dismissedUnread.add(currentUnreadPostId);
+  currentUnreadPostId=null;
+  $("#unreadSheet").classList.add("hidden");
+}
+async function markCurrentRead(){
+  if(!currentPerson||!currentUnreadPostId) return;
+  const postId=currentUnreadPostId;
+  const {error}=await supabase.from("casa_family_post_reads").insert({post_id:postId,reader:currentPerson});
+  if(error&&error.code!=="23505"){console.error(error);toast("Non sono riuscito a salvare la lettura");return;}
+  if(!postReads.some(r=>r.post_id===postId&&r.reader===currentPerson)) postReads.push({post_id:postId,reader:currentPerson,read_at:new Date().toISOString()});
+  currentUnreadPostId=null;
+  $("#unreadSheet").classList.add("hidden");
+  renderBoard();
+  toast("Segnato come letto");
+  setTimeout(showUnreadPopup,120);
+}
+
 function authorSelector(current){
   const sel=current||currentPerson||localStorage.getItem("casaAuthor")||"Angelo";
   return `<div class="field"><label>Chi sta pubblicando?</label><div class="author-pills">${AUTHORS.map(a=>`<button type="button" class="author-pill ${a===sel?"active":""}" data-author="${a}">${a}</button>`).join("")}</div><input type="hidden" name="author" value="${sel}"></div>`;
@@ -266,6 +321,7 @@ async function notifyOldPost(id){
       headers:{"Content-Type":"application/json"},
       body:JSON.stringify({
         action:"broadcast",
+        recipients:recipientsOf(p),
         payload:{
           title:`${emoji[p.category]||"📌"} ${p.title}`,
           body:body ? (body.length>140 ? body.slice(0,137)+"…" : body) : "Apri CASA per rileggere la notizia.",
@@ -294,9 +350,24 @@ function updateNotificationUI(){
   $("#notificationBanner").classList.toggle("hidden",!supported||granted||Notification.permission==="denied");
   $("#notificationButton").textContent=granted?"🔔":"🔕";
 }
+async function syncPushPerson(){
+  if(!currentPerson||!("serviceWorker" in navigator)||!("PushManager" in window)||!("Notification" in window)||Notification.permission!=="granted") return;
+  try{
+    const reg=await navigator.serviceWorker.ready;
+    const sub=await reg.pushManager.getSubscription();
+    if(!sub) return;
+    const jr=sub.toJSON();
+    await fetch(PUSH_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"subscribe",subscription:jr,deviceLabel:navigator.userAgent.slice(0,180),person:currentPerson})
+    });
+  }catch(e){console.error("CASA push person sync",e);}
+}
 async function enablePush(){
   const supported="Notification" in window && "serviceWorker" in navigator && "PushManager" in window;
   if(!supported){toast("Questo dispositivo non supporta le notifiche web");return;}
+  if(!currentPerson){openPersonSheet();toast("Prima scegli chi sta usando CASA");return;}
   const isiOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
   if(isiOS && !isStandalone()){toast("Apri CASA dall’icona salvata nella schermata Home");return;}
 
@@ -326,7 +397,8 @@ async function enablePush(){
       body:JSON.stringify({
         action:"subscribe",
         subscription:jr,
-        deviceLabel:navigator.userAgent.slice(0,180)
+        deviceLabel:navigator.userAgent.slice(0,180),
+        person:currentPerson
       })
     });
     if(!sr.ok) throw new Error("subscribe:"+sr.status);
