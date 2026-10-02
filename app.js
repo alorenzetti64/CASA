@@ -39,6 +39,21 @@ function iso(d=new Date()){ return [d.getFullYear(),String(d.getMonth()+1).padSt
 function dateFrom(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
 function onDate(e,d){ return e.start_date===d || (!!e.end_date && e.start_date<=d && e.end_date>=d); }
 function timeLabel(e){ return e.all_day || !e.start_time ? "Tutta la giornata" : e.start_time.slice(0,5); }
+function romeDateKey(value){
+  const p=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Rome",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(value));
+  const m=Object.fromEntries(p.map(x=>[x.type,x.value]));
+  return `${m.year}-${m.month}-${m.day}`;
+}
+function romeTime(value){
+  return new Intl.DateTimeFormat("it-IT",{timeZone:"Europe/Rome",hour:"2-digit",minute:"2-digit"}).format(new Date(value));
+}
+function matchAsEvent(m){
+  const startDate=romeDateKey(m.start);
+  return {id:`match:${m.id}`,title:m.title,start_date:startDate,end_date:startDate,start_time:m.all_day?null:romeTime(m.start),all_day:!!m.all_day,location:m.location||"",description:"",source:"match",match:m};
+}
+function calendarItems(){ return [...events,...matches.map(matchAsEvent)]; }
+function recipientsOf(p){ return Array.isArray(p.recipients)&&p.recipients.length?p.recipients:AUTHORS; }
+function readsOf(p){ return new Set(postReads.filter(r=>r.post_id===p.id).map(r=>r.reader)); }
 function catPill(c){ return `<span class="category-pill ${klass[c]||""}">${emoji[c]||"📌"} ${esc(c)}</span>`; }
 function postTime(ts){ const d=new Date(ts), t=new Date(); if(d.toDateString()===t.toDateString()) return "oggi, "+d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}); return d.toLocaleDateString("it-IT",{day:"numeric",month:"short"})+", "+d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}); }
 
@@ -55,12 +70,12 @@ function setView(view, updateUrl=true){
 function renderHero(){
   const h=new Date().getHours();
   $("#heroTitle").textContent=h<12?"Buongiorno famiglia!":h<18?"Buon pomeriggio famiglia!":"Buonasera famiglia!";
-  const n=events.filter(e=>onDate(e,iso())).length;
+  const n=calendarItems().filter(e=>onDate(e,iso())).length;
   $("#heroSubtitle").textContent=n===0?"Oggi il calendario è tranquillo.":n===1?"Oggi abbiamo una cosa da ricordare.":`Oggi abbiamo ${n} cose da ricordare.`;
   $("#todayLabel").textContent=new Date().toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
 }
 
-function miniEvent(e){ return `<div class="mini-event"><div class="emoji">${e.all_day?"🎉":"🕒"}</div><div><strong>${linkify(e.title)}</strong><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}</small></div></div>`; }
+function miniEvent(e){ return `<div class="mini-event"><div class="emoji">${e.source==="match"?"🏐":(e.all_day?"🎉":"🕒")}</div><div><strong>${linkify(e.title)}</strong><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}${e.source==="match"?" · Partita del Babbo":""}</small></div></div>`; }
 
 function postCard(p, controls=true){
   return `<article class="post-card" data-id="${p.id}">
@@ -68,11 +83,13 @@ function postCard(p, controls=true){
     <div class="post-meta"><span>${catPill(p.category)}</span><time>${postTime(p.created_at)}</time></div>
     <h3>${linkify(p.title)}</h3><p>${linkify(p.body||"",true)}</p>
     <div class="post-footer">${esc(p.author||"Famiglia")}</div>
+    <div class="post-read-status">${recipientsOf(p).map(name=>{const done=readsOf(p).has(name);return `<span class="read-chip ${done?"done":""}">${done?"✓":"○"} ${esc(name)}</span>`;}).join("")}</div>
     ${controls && openMenu===`post:${p.id}` ? menuHtml("post",p.id):""}
   </article>`;
 }
 
 function eventCard(e){
+  if(e.source==="match") return matchCard(e.match);
   const d=dateFrom(e.start_date);
   return `<article class="event-card" data-id="${e.id}">
     <button class="more-button" data-menu="event:${e.id}">•••</button>
@@ -81,6 +98,22 @@ function eventCard(e){
     ${openMenu===`event:${e.id}` ? menuHtml("event",e.id):""}
   </article>`;
 }
+function matchCard(m){
+  const d=new Date(m.start);
+  const day=new Intl.DateTimeFormat("it-IT",{timeZone:"Europe/Rome",day:"2-digit"}).format(d);
+  const mon=new Intl.DateTimeFormat("it-IT",{timeZone:"Europe/Rome",month:"short"}).format(d).replace(".","").toUpperCase();
+  const weekday=new Intl.DateTimeFormat("it-IT",{timeZone:"Europe/Rome",weekday:"short"}).format(d);
+  const when=m.all_day?"Tutta la giornata":romeTime(m.start);
+  return `<article class="match-card">
+    <div class="match-datebox"><b>${day}</b><small>${mon}</small></div>
+    <div class="match-content"><h3>🏐 ${linkify(m.title)}</h3><p>${esc(weekday)} · ${esc(when)}${m.location?` · ${linkify(m.location)}`:""}</p><span class="match-source">SUPERLEGA · MATCH</span></div>
+  </article>`;
+}
+function renderMatches(){
+  const box=$("#matchList");
+  if(!box) return;
+  box.innerHTML=matches.length?matches.map(matchCard).join(""):`<div class="empty-state">Nessuna partita trovata nel calendario SUPERLEGA.</div>`;
+}
 function menuHtml(type,id){
   const notify = type==="post" ? `<button data-notify-post="${id}">🔔 Invia notifica</button>` : "";
   return `<div class="action-menu">${notify}<button data-edit="${type}:${id}">Modifica</button><button class="danger" data-delete="${type}:${id}">Elimina</button></div>`;
@@ -88,7 +121,7 @@ function menuHtml(type,id){
 
 function renderHome(){
   renderHero();
-  const today=events.filter(e=>onDate(e,iso())).sort((a,b)=>(a.start_time||"").localeCompare(b.start_time||""));
+  const today=calendarItems().filter(e=>onDate(e,iso())).sort((a,b)=>(a.start_time||"").localeCompare(b.start_time||""));
   $("#todayEvents").innerHTML=today.length?today.map(miniEvent).join(""):`<div class="empty-state">Nessun impegno per oggi. Giornata libera 🙂</div>`;
   $("#latestPost").innerHTML=posts[0]?postCard(posts[0],false):`<div class="empty-state">La bacheca è ancora vuota.</div>`;
   const seen=Number(localStorage.getItem("casaLastSeenPostTs")||0);
@@ -110,18 +143,19 @@ function renderCalendar(){
   const cells=[];
   for(let i=0;i<42;i++){
     const d=new Date(start); d.setDate(start.getDate()+i);
-    const s=iso(d), outside=d.getMonth()!==m, today=s===iso(), has=events.some(e=>onDate(e,s)), sel=s===selectedDate;
+    const s=iso(d), outside=d.getMonth()!==m, today=s===iso(), has=calendarItems().some(e=>onDate(e,s)), sel=s===selectedDate;
     cells.push(`<button class="calendar-day ${outside?"outside":""} ${today?"today":""} ${has?"has-event":""} ${sel?"selected":""}" data-date="${s}">${d.getDate()}</button>`);
   }
   $("#calendarGrid").innerHTML=cells.join("");
   let list;
-  if(selectedDate){ list=events.filter(e=>onDate(e,selectedDate)); $("#calendarListTitle").textContent="Eventi del "+dateFrom(selectedDate).toLocaleDateString("it-IT",{day:"numeric",month:"long"}); }
-  else { list=events.filter(e=>(e.end_date||e.start_date)>=iso()); $("#calendarListTitle").textContent="In arrivo"; }
+  const all=calendarItems();
+  if(selectedDate){ list=all.filter(e=>onDate(e,selectedDate)); $("#calendarListTitle").textContent="Eventi del "+dateFrom(selectedDate).toLocaleDateString("it-IT",{day:"numeric",month:"long"}); }
+  else { list=all.filter(e=>(e.end_date||e.start_date)>=iso()); $("#calendarListTitle").textContent="In arrivo"; }
   list.sort((a,b)=>(a.start_date+(a.start_time||"")).localeCompare(b.start_date+(b.start_time||"")));
   $("#eventList").innerHTML=list.length?list.map(eventCard).join(""):`<div class="empty-state">Nessun evento da mostrare.</div>`;
 }
 
-function renderAll(){ renderHome(); renderBoard(); renderCalendar(); updateNotificationUI(); }
+function renderAll(){ renderHome(); renderBoard(); renderCalendar(); renderMatches(); updateNotificationUI(); updatePersonUI(); }
 
 async function loadData(){
   const [p,e]=await Promise.all([
