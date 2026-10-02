@@ -63,7 +63,10 @@ function eventCard(e){
     ${openMenu===`event:${e.id}` ? menuHtml("event",e.id):""}
   </article>`;
 }
-function menuHtml(type,id){ return `<div class="action-menu"><button data-edit="${type}:${id}">Modifica</button><button class="danger" data-delete="${type}:${id}">Elimina</button></div>`; }
+function menuHtml(type,id){
+  const notify = type==="post" ? `<button data-notify-post="${id}">🔔 Invia notifica</button>` : "";
+  return `<div class="action-menu">${notify}<button data-edit="${type}:${id}">Modifica</button><button class="danger" data-delete="${type}:${id}">Elimina</button></div>`;
+}
 
 function renderHome(){
   renderHero();
@@ -162,6 +165,40 @@ async function removeItem(type,id){
   openMenu=null; toast("Eliminato"); await loadData();
 }
 
+async function notifyOldPost(id){
+  const p=posts.find(x=>x.id===id);
+  if(!p) return;
+  if(!confirm(`Vuoi inviare adesso una notifica per “${p.title}”?`)) return;
+
+  openMenu=null;
+  renderBoard();
+  toast("Invio notifica…");
+
+  try{
+    const body=(p.body||"").replace(/\s+/g," ").trim();
+    const r=await fetch(PUSH_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({
+        action:"broadcast",
+        payload:{
+          title:`${emoji[p.category]||"📌"} ${p.title}`,
+          body:body ? (body.length>140 ? body.slice(0,137)+"…" : body) : "Apri CASA per rileggere la notizia.",
+          url:"./?view=board",
+          tag:`casa-reminder-${p.id}-${Date.now()}`
+        }
+      })
+    });
+    if(!r.ok) throw new Error("broadcast:"+r.status);
+    const data=await r.json();
+    const n=Number(data.sent||0);
+    toast(n===1?"Notifica inviata a 1 dispositivo":`Notifica inviata a ${n} dispositivi`);
+  }catch(e){
+    console.error("CASA manual notification error",e);
+    toast("Non sono riuscito a inviare la notifica");
+  }
+}
+
 function urlB64(s){ const pad="=".repeat((4-s.length%4)%4), b=(s+pad).replace(/-/g,"+").replace(/_/g,"/"), raw=atob(b); return Uint8Array.from([...raw].map(c=>c.charCodeAt(0))); }
 function isStandalone(){
   return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
@@ -231,6 +268,7 @@ function bind(){
     const d=ev.target.closest("[data-date]"); if(d){selectedDate=selectedDate===d.dataset.date?null:d.dataset.date;renderCalendar();return;}
     const a=ev.target.closest("[data-author]"); if(a){ $$(".author-pill").forEach(x=>x.classList.toggle("active",x===a)); a.closest(".field").querySelector("input[name=author]").value=a.dataset.author; return; }
     const m=ev.target.closest("[data-menu]"); if(m){openMenu=openMenu===m.dataset.menu?null:m.dataset.menu;renderBoard();renderCalendar();return;}
+    const nt=ev.target.closest("[data-notify-post]"); if(nt){await notifyOldPost(nt.dataset.notifyPost);return;}
     const ed=ev.target.closest("[data-edit]"); if(ed){const [type,id]=ed.dataset.edit.split(":"); const item=(type==="post"?posts:events).find(x=>x.id===id); openMenu=null; openForm(type,item);return;}
     const del=ev.target.closest("[data-delete]"); if(del){const [type,id]=del.dataset.delete.split(":"); await removeItem(type,id);return;}
   });
