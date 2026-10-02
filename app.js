@@ -3,7 +3,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = "https://vqrpkkrqynvlzjufiocn.supabase.co";
 const SUPABASE_KEY = "sb_publishable_RGTsinQvL4hyv94mzNgNHA_uKqOfDuf";
 const PUSH_URL = `${SUPABASE_URL}/functions/v1/casa-family-push`;
-const MATCHES_URL = "https://nulwoygrcubxbskgbvef.supabase.co/functions/v1/casa-matches";
+const MATCHES_URL = "https://nulwoygrcubxbskgbvef.supabase.co/functions/v1/casa-matches?all=1";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const CATEGORIES = ["Tutte","Importante","Famiglia","Casa","Da ricordare","Idea"];
