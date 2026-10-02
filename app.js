@@ -3,6 +3,7 @@ import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js
 const SUPABASE_URL = "https://vqrpkkrqynvlzjufiocn.supabase.co";
 const SUPABASE_KEY = "sb_publishable_RGTsinQvL4hyv94mzNgNHA_uKqOfDuf";
 const PUSH_URL = `${SUPABASE_URL}/functions/v1/casa-family-push`;
+const MATCHES_URL = "https://nulwoygrcubxbskgbvef.supabase.co/functions/v1/casa-matches";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const CATEGORIES = ["Tutte","Importante","Famiglia","Casa","Da ricordare","Idea"];
@@ -10,7 +11,8 @@ const AUTHORS = ["Angelo","Luana","Manuela"];
 const emoji = {Importante:"❤️",Famiglia:"👨‍👩‍👧",Casa:"🏠","Da ricordare":"⏰",Idea:"💡"};
 const klass = {Importante:"important",Famiglia:"family",Casa:"home","Da ricordare":"remember",Idea:"idea"};
 
-let posts = [], events = [], selectedCategory = "Tutte", selectedDate = null, openMenu = null;
+let posts = [], events = [], matches = [], postReads = [], selectedCategory = "Tutte", selectedDate = null, openMenu = null;
+let currentPerson = null, currentUnreadPostId = null;
 let cursor = new Date(); cursor.setDate(1);
 
 const $ = s => document.querySelector(s);
@@ -41,11 +43,12 @@ function catPill(c){ return `<span class="category-pill ${klass[c]||""}">${emoji
 function postTime(ts){ const d=new Date(ts), t=new Date(); if(d.toDateString()===t.toDateString()) return "oggi, "+d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}); return d.toLocaleDateString("it-IT",{day:"numeric",month:"short"})+", "+d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}); }
 
 function setView(view, updateUrl=true){
-  if(!["home","board","calendar"].includes(view)) view="home";
+  if(!["home","board","calendar","matches"].includes(view)) view="home";
   $$(".view").forEach(v=>v.classList.toggle("active",v.id===`view-${view}`));
   $$(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
   if(updateUrl){ const u=new URL(location.href); view==="home"?u.searchParams.delete("view"):u.searchParams.set("view",view); history.replaceState({},"",u); }
   if(view==="calendar") renderCalendar();
+  if(view==="matches") renderMatches();
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
