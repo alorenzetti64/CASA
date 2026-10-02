@@ -416,14 +416,19 @@ async function enablePush(){
 
 function bind(){
   document.addEventListener("click",async ev=>{
+    const person=ev.target.closest("[data-person-choice]"); if(person){await setPerson(person.dataset.personChoice);return;}
     const v=ev.target.closest("[data-view]"); if(v){setView(v.dataset.view);return;}
     if(ev.target.closest("#globalAdd")){openChoice();return;}
+    if(ev.target.closest("#personButton")){openPersonSheet();return;}
+    if(ev.target.closest("#refreshMatches")){await loadMatches(true);return;}
+    if(ev.target.closest("#markReadButton")){await markCurrentRead();return;}
+    if(ev.target.closest("#unreadLater")){dismissUnread();return;}
     if(ev.target.closest("[data-close-sheet]")){closeChoice();return;}
     if(ev.target.closest("[data-close-form]")){closeForm();return;}
     const add=ev.target.closest("[data-add]"); if(add){openForm(add.dataset.add);return;}
-    const c=ev.target.closest("[data-category]"); if(c){selectedCategory=c.dataset.category;renderBoard();return;}
+    const chip=ev.target.closest("[data-category]"); if(chip){selectedCategory=chip.dataset.category;renderBoard();return;}
     const d=ev.target.closest("[data-date]"); if(d){selectedDate=selectedDate===d.dataset.date?null:d.dataset.date;renderCalendar();return;}
-    const a=ev.target.closest("[data-author]"); if(a){ $$(".author-pill").forEach(x=>x.classList.toggle("active",x===a)); a.closest(".field").querySelector("input[name=author]").value=a.dataset.author; return; }
+    const a=ev.target.closest("[data-author]"); if(a){ $(".author-pill").forEach(x=>x.classList.toggle("active",x===a)); a.closest(".field").querySelector("input[name=author]").value=a.dataset.author; return; }
     const m=ev.target.closest("[data-menu]"); if(m){openMenu=openMenu===m.dataset.menu?null:m.dataset.menu;renderBoard();renderCalendar();return;}
     const nt=ev.target.closest("[data-notify-post]"); if(nt){await notifyOldPost(nt.dataset.notifyPost);return;}
     const ed=ev.target.closest("[data-edit]"); if(ed){const [type,id]=ed.dataset.edit.split(":"); const item=(type==="post"?posts:events).find(x=>x.id===id); openMenu=null; openForm(type,item);return;}
@@ -436,17 +441,30 @@ function bind(){
   $("#notificationButton").addEventListener("click",enablePush);
   $("#choiceSheet").addEventListener("click",e=>{if(e.target.id==="choiceSheet")closeChoice();});
   $("#formSheet").addEventListener("click",e=>{if(e.target.id==="formSheet")closeForm();});
+  $("#personSheet").addEventListener("click",e=>{if(e.target.id==="personSheet"&&currentPerson)e.currentTarget.classList.add("hidden");});
+  $("#unreadSheet").addEventListener("click",e=>{if(e.target.id==="unreadSheet")dismissUnread();});
 }
 function realtime(){
   supabase.channel("casa-family-live")
     .on("postgres_changes",{event:"*",schema:"public",table:"casa_family_posts"},loadData)
     .on("postgres_changes",{event:"*",schema:"public",table:"casa_family_events"},loadData)
+    .on("postgres_changes",{event:"*",schema:"public",table:"casa_family_post_reads"},loadData)
     .subscribe();
 }
 async function init(){
+  const savedPerson=localStorage.getItem("casaPerson");
+  const savedAuthor=localStorage.getItem("casaAuthor");
+  currentPerson=AUTHORS.includes(savedPerson)?savedPerson:(AUTHORS.includes(savedAuthor)?savedAuthor:null);
+  if(currentPerson) localStorage.setItem("casaPerson",currentPerson);
+
   bind();
   if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(console.error);
   setView(new URL(location.href).searchParams.get("view")||"home",false);
-  updateNotificationUI(); await loadData(); realtime();
+  updatePersonUI();
+  updateNotificationUI();
+  await loadData();
+  if(currentPerson) await syncPushPerson();
+  else openPersonSheet();
+  realtime();
 }
 init();
