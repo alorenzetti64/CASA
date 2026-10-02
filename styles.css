@@ -40,7 +40,9 @@ button { color: inherit; }
 .brand-house { font-size: 36px; filter: drop-shadow(0 3px 6px rgba(0,0,0,.08)); }
 .brand strong { display: block; font-family: "Fredoka", sans-serif; font-size: 27px; letter-spacing: .5px; line-height: 1; }
 .brand small { display: block; max-width: 255px; color: var(--muted); font-size: 11px; margin-top: 4px; }
+.top-actions { display:flex; align-items:center; gap:8px; }
 .icon-button { border: 0; background: white; width: 42px; height: 42px; border-radius: 50%; box-shadow: var(--shadow); font-size: 19px; cursor: pointer; }
+.person-button { border:0; background:white; min-width:42px; height:42px; border-radius:999px; box-shadow:var(--shadow); padding:0 11px; font-weight:800; cursor:pointer; color:var(--ink); }
 .main-content { padding: 14px 16px 26px; }
 .view { display: none; animation: fade .2s ease; }
 .view.active { display: block; }
@@ -75,6 +77,8 @@ button { color: inherit; }
 .home-tile { position:relative; min-height: 165px; border:1px solid rgba(255,255,255,.9); border-radius:27px; box-shadow:var(--shadow); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; padding:18px; text-align:center; }
 .board-tile { background: linear-gradient(145deg,#ffe5eb,#fff4f6); }
 .calendar-tile { background: linear-gradient(145deg,#e6f5ff,#f3faff); }
+.matches-tile { grid-column:1 / -1; min-height:135px; background:linear-gradient(145deg,#e9fff3,#f5fff9); }
+.matches-tile .tile-icon { font-size:42px; }
 .tile-icon { font-size:46px; }
 .home-tile strong { font-family:"Fredoka"; font-size:25px; }
 .home-tile small { color:var(--muted); line-height:1.25; }
@@ -104,6 +108,16 @@ button { color: inherit; }
 .inline-link { color:#1769aa; text-decoration:underline; text-underline-offset:2px; word-break:break-word; }
 .inline-link:hover { opacity:.8; }
 .post-footer { margin-top:12px; color:var(--muted); font-size:12px; font-weight:700; }
+.post-read-status { margin-top:10px; display:flex; flex-wrap:wrap; gap:6px; }
+.read-chip { display:inline-flex; align-items:center; gap:4px; padding:5px 8px; border-radius:999px; background:#f4f1ed; color:#7b7f88; font-size:11px; font-weight:800; }
+.read-chip.done { background:var(--green-soft); color:#0a715a; }
+.match-card { position:relative; background:linear-gradient(145deg,#ffffff,#f5fff9); border:1px solid #dcefe6; border-radius:22px; box-shadow:var(--shadow); padding:15px; display:flex; gap:12px; align-items:flex-start; }
+.match-datebox { min-width:58px; border-radius:16px; background:#e8f8ef; padding:8px; text-align:center; font-weight:800; color:#0a715a; }
+.match-datebox b { display:block; font-size:22px; line-height:1; }
+.match-datebox small { display:block; margin-top:4px; font-size:10px; letter-spacing:.08em; }
+.match-content h3 { margin:0 0 5px; font-size:18px; }
+.match-content p { margin:3px 0 0; color:var(--muted); font-size:13px; }
+.match-source { display:inline-flex; margin-top:9px; padding:5px 8px; border-radius:999px; background:#edf8f2; color:#0a715a; font-size:10px; font-weight:800; letter-spacing:.04em; }
 .more-button { position:absolute; top:12px; right:10px; border:0; background:#f6f2ed; border-radius:50%; width:32px; height:32px; cursor:pointer; }
 .calendar-card { padding:15px; }
 .calendar-toolbar { display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
@@ -157,12 +171,30 @@ button { color: inherit; }
 .author-pills { display:flex; gap:8px; flex-wrap:wrap; }
 .author-pill { border:1px solid var(--line); background:white; padding:9px 12px; border-radius:999px; cursor:pointer; font-weight:700; }
 .author-pill.active { border-color:var(--green); background:var(--green-soft); color:#0a715a; }
+.recipient-grid { display:flex; flex-wrap:wrap; gap:8px; }
+.recipient-option { position:relative; }
+.recipient-option input { position:absolute; opacity:0; pointer-events:none; }
+.recipient-option span { display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line); background:white; padding:9px 12px; border-radius:999px; cursor:pointer; font-weight:800; font-size:13px; }
+.recipient-option input:checked + span { border-color:var(--coral); background:var(--coral-soft); color:#ba3347; }
+.recipient-help { margin:6px 0 0; color:var(--muted); font-size:11px; line-height:1.35; }
 .action-menu { position:absolute; right:12px; top:48px; z-index:4; background:white; border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; min-width:130px; }
 .action-menu button { width:100%; border:0; background:white; padding:10px 14px; text-align:left; cursor:pointer; }
 .action-menu button:hover { background:#f8f5f2; }
 .action-menu .danger { color:#d83e50; }
 .toast { position:fixed; z-index:200; left:50%; bottom:100px; transform:translateX(-50%); background:#162f52; color:white; border-radius:999px; padding:10px 16px; font-weight:700; box-shadow:var(--shadow); white-space:nowrap; max-width:calc(100vw - 30px); overflow:hidden; text-overflow:ellipsis; }
 .error-box { background:#fff0f1; color:#a5293a; border:1px solid #ffd2d7; border-radius:18px; padding:14px; }
+.person-sheet { text-align:center; }
+.person-sheet h2 { margin:2px 0 8px; font-family:"Fredoka"; }
+.person-sheet > p { margin:0 auto 18px; color:var(--muted); max-width:480px; line-height:1.4; }
+.person-choice-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.person-choice-grid button { border:1px solid var(--line); background:#fffaf6; border-radius:18px; padding:18px 8px; font-weight:800; cursor:pointer; }
+.person-choice-grid button:hover { background:var(--green-soft); }
+.unread-sheet { padding-top:28px; }
+.unread-sheet h2 { font-family:"Fredoka"; font-size:25px; margin:4px 42px 10px 0; }
+#unreadBody { line-height:1.55; font-size:16px; }
+.unread-meta { margin:14px 0 18px; color:var(--muted); font-size:12px; font-weight:700; }
+.read-button { width:100%; padding:14px 16px; font-size:15px; }
+.inline-link { color:#1769aa; text-decoration:underline; text-underline-offset:2px; word-break:break-word; }
 @media (min-width: 700px) {
   .main-content { padding-left:28px; padding-right:28px; }
   .topbar { padding-left:28px; padding-right:28px; }
@@ -171,7 +203,7 @@ button { color: inherit; }
 }
 @media (max-width: 380px) {
   .brand small { display:none; }
-  .choice-grid, .field-row { grid-template-columns:1fr; }
+  .choice-grid, .field-row, .person-choice-grid { grid-template-columns:1fr; }
   .home-tile strong { font-size:21px; }
   .hero-card h1 { font-size:28px; }
 }
