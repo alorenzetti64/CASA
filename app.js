@@ -222,7 +222,7 @@ function showUnreadPopup(){
   const p=unreadPostsForCurrent()[0];
   if(!p) return;
   currentUnreadPostId=p.id;
-  $("#unreadTitle").textContent=p.title;
+  $("#unreadTitle").innerHTML=linkify(p.title);
   $("#unreadBody").innerHTML=linkify(p.body||"",true);
   $("#unreadMeta").textContent=`${p.author||"Famiglia"} · ${postTime(p.created_at)}`;
   $("#unreadSheet").classList.remove("hidden");
@@ -252,8 +252,9 @@ function authorSelector(current){
 function categorySelect(current="Famiglia"){
   return `<div class="field"><label>Categoria</label><select name="category">${CATEGORIES.filter(c=>c!=="Tutte").map(c=>`<option ${c===current?"selected":""}>${c}</option>`).join("")}</select></div>`;
 }
-function recipientSelector(current=AUTHORS){
-  const selected=Array.isArray(current)&&current.length?current:AUTHORS;
+function recipientSelector(current=null){
+  const fallback=currentPerson?AUTHORS.filter(name=>name!==currentPerson):AUTHORS;
+  const selected=Array.isArray(current)&&current.length?current:fallback;
   return `<div class="field"><label>Chi deve leggere questo annuncio?</label><div class="recipient-grid">${AUTHORS.map(name=>`<label class="recipient-option"><input type="checkbox" name="recipients" value="${name}" ${selected.includes(name)?"checked":""}><span>✓ ${name}</span></label>`).join("")}</div><p class="recipient-help">A chi selezioni comparirà l’annuncio finché non preme “Ho letto”.</p></div>`;
 }
 function postFields(p={}){
