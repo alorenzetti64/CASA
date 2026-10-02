@@ -26,7 +26,10 @@
           <small>Le cose che ci riguardano, tutte nello stesso posto.</small>
         </span>
       </button>
-      <button id="notificationButton" class="icon-button" aria-label="Notifiche" title="Notifiche">🔔</button>
+      <div class="top-actions">
+        <button id="personButton" class="person-button" aria-label="Chi sta usando CASA" title="Chi sta usando CASA">👤</button>
+        <button id="notificationButton" class="icon-button" aria-label="Notifiche" title="Notifiche">🔔</button>
+      </div>
     </header>
 
     <main id="appMain" class="main-content" aria-live="polite">
@@ -70,6 +73,11 @@
             <strong>Calendario</strong>
             <small>Prossimi eventi e impegni</small>
           </button>
+          <button class="home-tile matches-tile" data-view="matches">
+            <span class="tile-icon">🏐</span>
+            <strong>Partite del Babbo</strong>
+            <small>Le partite prese dal calendario SUPERLEGA</small>
+          </button>
         </div>
 
         <section class="latest-section">
@@ -94,6 +102,18 @@
         </div>
         <div id="categoryFilters" class="filter-row"></div>
         <div id="postList" class="content-list"></div>
+      </section>
+
+      <section id="view-matches" class="view">
+        <div class="page-head">
+          <div>
+            <span class="page-icon">🏐</span>
+            <h1>Partite del Babbo</h1>
+            <p>Dal calendario SUPERLEGA, solo gli eventi con “Match”.</p>
+          </div>
+          <button id="refreshMatches" class="icon-button" aria-label="Aggiorna partite" title="Aggiorna partite">↻</button>
+        </div>
+        <div id="matchList" class="content-list"></div>
       </section>
 
       <section id="view-calendar" class="view">
@@ -155,6 +175,29 @@
       <input type="hidden" id="editType" />
       <div id="formFields"></div>
     </form>
+  </div>
+
+  <div id="personSheet" class="sheet-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="personTitle">
+    <div class="sheet person-sheet">
+      <h2 id="personTitle">Chi sta usando CASA?</h2>
+      <p>Serve solo a capire a chi mostrare gli annunci da leggere. Non è un accesso e non richiede password.</p>
+      <div class="person-choice-grid">
+        <button type="button" data-person-choice="Angelo">Angelo</button>
+        <button type="button" data-person-choice="Luana">Luana</button>
+        <button type="button" data-person-choice="Manuela">Manuela</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="unreadSheet" class="sheet-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="unreadTitle">
+    <div class="sheet unread-sheet">
+      <button class="sheet-close" id="unreadLater" aria-label="Chiudi">×</button>
+      <span class="section-kicker">DA LEGGERE</span>
+      <h2 id="unreadTitle"></h2>
+      <div id="unreadBody"></div>
+      <div id="unreadMeta" class="unread-meta"></div>
+      <button id="markReadButton" class="primary read-button">✓ Ho letto</button>
+    </div>
   </div>
 
   <div id="toast" class="toast hidden" role="status"></div>
