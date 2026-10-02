@@ -13,6 +13,7 @@ const klass = {Importante:"important",Famiglia:"family",Casa:"home","Da ricordar
 
 let posts = [], events = [], matches = [], postReads = [], selectedCategory = "Tutte", selectedDate = null, openMenu = null;
 let currentPerson = null, currentUnreadPostId = null;
+const dismissedUnread = new Set();
 let cursor = new Date(); cursor.setDate(1);
 
 const $ = s => document.querySelector(s);
@@ -157,26 +158,54 @@ function renderCalendar(){
 
 function renderAll(){ renderHome(); renderBoard(); renderCalendar(); renderMatches(); updateNotificationUI(); updatePersonUI(); }
 
+async function loadMatches(showToast=false){
+  try{
+    const r=await fetch(MATCHES_URL,{cache:"no-store"});
+    const data=await r.json();
+    if(!r.ok||!data.connected) throw new Error(data.error||("matches:"+r.status));
+    matches=Array.isArray(data.matches)?data.matches:[];
+    renderMatches();
+    renderCalendar();
+    renderHome();
+    if(showToast) toast("Partite aggiornate");
+  }catch(e){
+    console.error("CASA matches error",e);
+    if(showToast) toast("Non sono riuscito ad aggiornare le partite");
+    const box=$("#matchList");
+    if(box&&!matches.length) box.innerHTML=`<div class="error-box">Non riesco a leggere il calendario SUPERLEGA in questo momento.</div>`;
+  }
+}
+
 async function loadData(){
-  const [p,e]=await Promise.all([
+  const matchPromise=loadMatches(false);
+  const [p,e,r]=await Promise.all([
     supabase.from("casa_family_posts").select("*").order("created_at",{ascending:false}),
-    supabase.from("casa_family_events").select("*").order("start_date",{ascending:true}).order("start_time",{ascending:true})
+    supabase.from("casa_family_events").select("*").order("start_date",{ascending:true}).order("start_time",{ascending:true}),
+    supabase.from("casa_family_post_reads").select("*")
   ]);
-  if(p.error||e.error){ console.error(p.error||e.error); $("#todayEvents").innerHTML=`<div class="error-box">Non riesco a collegarmi al diario di famiglia. Riprova tra poco.</div>`; return; }
-  posts=p.data||[]; events=e.data||[]; renderAll();
+  if(p.error||e.error||r.error){ console.error(p.error||e.error||r.error); $("#todayEvents").innerHTML=`<div class="error-box">Non riesco a collegarmi al diario di famiglia. Riprova tra poco.</div>`; return; }
+  posts=p.data||[]; events=e.data||[]; postReads=r.data||[];
+  await matchPromise;
+  renderAll();
+  if(currentPerson) showUnreadPopup();
 }
 
 function authorSelector(current){
-  const sel=current||localStorage.getItem("casaAuthor")||"Angelo";
+  const sel=current||currentPerson||localStorage.getItem("casaAuthor")||"Angelo";
   return `<div class="field"><label>Chi sta pubblicando?</label><div class="author-pills">${AUTHORS.map(a=>`<button type="button" class="author-pill ${a===sel?"active":""}" data-author="${a}">${a}</button>`).join("")}</div><input type="hidden" name="author" value="${sel}"></div>`;
 }
 function categorySelect(current="Famiglia"){
   return `<div class="field"><label>Categoria</label><select name="category">${CATEGORIES.filter(c=>c!=="Tutte").map(c=>`<option ${c===current?"selected":""}>${c}</option>`).join("")}</select></div>`;
 }
+function recipientSelector(current=AUTHORS){
+  const selected=Array.isArray(current)&&current.length?current:AUTHORS;
+  return `<div class="field"><label>Chi deve leggere questo annuncio?</label><div class="recipient-grid">${AUTHORS.map(name=>`<label class="recipient-option"><input type="checkbox" name="recipients" value="${name}" ${selected.includes(name)?"checked":""}><span>✓ ${name}</span></label>`).join("")}</div><p class="recipient-help">A chi selezioni comparirà l’annuncio finché non preme “Ho letto”.</p></div>`;
+}
 function postFields(p={}){
   return `<div class="field"><label>Titolo</label><input name="title" maxlength="100" required value="${esc(p.title||"")}" placeholder="Es. Pranzo di domenica"></div>
   ${categorySelect(p.category)}
   <div class="field"><label>Messaggio</label><textarea name="body" required placeholder="Scrivi qui la tua comunicazione…">${esc(p.body||"")}</textarea></div>
+  ${recipientSelector(p.recipients)}
   ${authorSelector(p.author)}`;
 }
 function eventFields(e={}){
@@ -203,7 +232,11 @@ async function saveForm(ev){
   ev.preventDefault(); const fd=new FormData(ev.currentTarget), type=$("#editType").value, id=$("#editId").value;
   const author=fd.get("author")||"Famiglia"; localStorage.setItem("casaAuthor",author);
   let row;
-  if(type==="post") row={title:String(fd.get("title")||"").trim(),body:String(fd.get("body")||"").trim(),category:fd.get("category"),author,updated_at:new Date().toISOString()};
+  if(type==="post"){
+    const recipients=fd.getAll("recipients").map(String).filter(x=>AUTHORS.includes(x));
+    if(!recipients.length){toast("Scegli almeno una persona che deve leggere l’annuncio");return;}
+    row={title:String(fd.get("title")||"").trim(),body:String(fd.get("body")||"").trim(),category:fd.get("category"),author,recipients,updated_at:new Date().toISOString()};
+  }
   else row={title:String(fd.get("title")||"").trim(),start_date:fd.get("start_date"),start_time:fd.get("all_day")?null:(fd.get("start_time")||null),end_date:fd.get("end_date")||null,all_day:!!fd.get("all_day"),location:String(fd.get("location")||"").trim()||null,description:String(fd.get("description")||"").trim()||null,category:fd.get("category"),author,updated_at:new Date().toISOString()};
   const table=type==="post"?"casa_family_posts":"casa_family_events";
   const q=id?supabase.from(table).update(row).eq("id",id):supabase.from(table).insert(row);
