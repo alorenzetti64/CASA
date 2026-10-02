@@ -1,4 +1,4 @@
-const CACHE = "casa-family-v3";
+const CACHE = "casa-family-v4";
 const APP_SHELL = ["./","./index.html","./styles.css","./app.js","./manifest.json","./icons/icon-192.png","./icons/icon-512.png"];
 
 self.addEventListener("install", event => {
