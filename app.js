@@ -16,6 +16,21 @@ let cursor = new Date(); cursor.setDate(1);
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const esc = (v="") => String(v).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#039;",'"':"&quot;"}[c]));
+function linkify(v="", nl2br=false){
+  const text=String(v??"");
+  const re=/(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+  let out="", last=0;
+  for(const m of text.matchAll(re)){
+    out+=esc(text.slice(last,m.index));
+    let raw=m[0], trailing="";
+    while(/[.,;:!?)]$/.test(raw)){ trailing=raw.slice(-1)+trailing; raw=raw.slice(0,-1); }
+    const href=/^www\./i.test(raw)?"https://"+raw:raw;
+    out+=`<a class="inline-link" href="${esc(href)}" target="_blank" rel="noopener noreferrer">${esc(raw)}</a>${esc(trailing)}`;
+    last=m.index+m[0].length;
+  }
+  out+=esc(text.slice(last));
+  return nl2br?out.replace(/\n/g,"<br>"):out;
+}
 
 function toast(msg){ const e=$("#toast"); e.textContent=msg; e.classList.remove("hidden"); clearTimeout(toast.t); toast.t=setTimeout(()=>e.classList.add("hidden"),2200); }
 function iso(d=new Date()){ return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-"); }
@@ -42,13 +57,13 @@ function renderHero(){
   $("#todayLabel").textContent=new Date().toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
 }
 
-function miniEvent(e){ return `<div class="mini-event"><div class="emoji">${e.all_day?"🎉":"🕒"}</div><div><strong>${esc(e.title)}</strong><small>${esc(timeLabel(e))}${e.location?` · ${esc(e.location)}`:""}</small></div></div>`; }
+function miniEvent(e){ return `<div class="mini-event"><div class="emoji">${e.all_day?"🎉":"🕒"}</div><div><strong>${linkify(e.title)}</strong><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}</small></div></div>`; }
 
 function postCard(p, controls=true){
   return `<article class="post-card" data-id="${p.id}">
     ${controls?`<button class="more-button" data-menu="post:${p.id}">•••</button>`:""}
     <div class="post-meta"><span>${catPill(p.category)}</span><time>${postTime(p.created_at)}</time></div>
-    <h3>${esc(p.title)}</h3><p>${esc(p.body||"").replace(/\n/g,"<br>")}</p>
+    <h3>${linkify(p.title)}</h3><p>${linkify(p.body||"",true)}</p>
     <div class="post-footer">${esc(p.author||"Famiglia")}</div>
     ${controls && openMenu===`post:${p.id}` ? menuHtml("post",p.id):""}
   </article>`;
@@ -59,7 +74,7 @@ function eventCard(e){
   return `<article class="event-card" data-id="${e.id}">
     <button class="more-button" data-menu="event:${e.id}">•••</button>
     <div class="event-row"><div class="event-datebox"><b>${d.getDate()}</b>${d.toLocaleDateString("it-IT",{month:"short"}).toUpperCase()}</div>
-    <div><h3>${esc(e.title)}</h3><small>${esc(timeLabel(e))}${e.location?` · ${esc(e.location)}`:""}</small>${e.description?`<p style="margin-top:7px">${esc(e.description)}</p>`:""}</div></div>
+    <div><h3>${linkify(e.title)}</h3><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}</small>${e.description?`<p style="margin-top:7px">${linkify(e.description,true)}</p>`:""}</div></div>
     ${openMenu===`event:${e.id}` ? menuHtml("event",e.id):""}
   </article>`;
 }
