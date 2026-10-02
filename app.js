@@ -48,6 +48,7 @@ function romeDateKey(value){
 function romeTime(value){
   return new Intl.DateTimeFormat("it-IT",{timeZone:"Europe/Rome",hour:"2-digit",minute:"2-digit"}).format(new Date(value));
 }
+function todayKey(){ return romeDateKey(new Date()); }
 function matchAsEvent(m){
   const startDate=romeDateKey(m.start);
   return {id:`match:${m.id}`,title:m.title,start_date:startDate,end_date:startDate,start_time:m.all_day?null:romeTime(m.start),all_day:!!m.all_day,location:m.location||"",description:"",source:"match",match:m};
@@ -113,7 +114,8 @@ function matchCard(m){
 function renderMatches(){
   const box=$("#matchList");
   if(!box) return;
-  box.innerHTML=matches.length?matches.map(matchCard).join(""):`<div class="empty-state">Nessuna partita trovata nel calendario SUPERLEGA.</div>`;
+  const upcoming=matches.filter(m=>romeDateKey(m.start)>=todayKey());
+  box.innerHTML=upcoming.length?upcoming.map(matchCard).join(""):`<div class="empty-state">Nessuna partita in programma da oggi in avanti.</div>`;
 }
 function menuHtml(type,id){
   const notify = type==="post" ? `<button data-notify-post="${id}">🔔 Invia notifica</button>` : "";
@@ -151,7 +153,7 @@ function renderCalendar(){
   let list;
   const all=calendarItems();
   if(selectedDate){ list=all.filter(e=>onDate(e,selectedDate)); $("#calendarListTitle").textContent="Eventi del "+dateFrom(selectedDate).toLocaleDateString("it-IT",{day:"numeric",month:"long"}); }
-  else { list=all.filter(e=>(e.end_date||e.start_date)>=iso()); $("#calendarListTitle").textContent="In arrivo"; }
+  else { list=all.filter(e=>(e.end_date||e.start_date)>=todayKey()); $("#calendarListTitle").textContent="In arrivo"; }
   list.sort((a,b)=>(a.start_date+(a.start_time||"")).localeCompare(b.start_date+(b.start_time||"")));
   $("#eventList").innerHTML=list.length?list.map(eventCard).join(""):`<div class="empty-state">Nessun evento da mostrare.</div>`;
 }
