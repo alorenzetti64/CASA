@@ -187,6 +187,16 @@ async function loadData(){
   posts=p.data||[]; events=e.data||[]; postReads=r.data||[];
   await matchPromise;
   renderAll();
+
+  if(currentUnreadPostId&&!$("#unreadSheet").classList.contains("hidden")){
+    const openPost=posts.find(p=>p.id===currentUnreadPostId);
+    if(!openPost||recipientsOf(openPost).every(name=>readsOf(openPost).has(name))){
+      currentUnreadPostId=null;
+      $("#unreadSheet").classList.add("hidden");
+    }else{
+      renderUnreadButtons(openPost);
+    }
+  }
   showUnreadPopup();
 }
 
@@ -489,7 +499,6 @@ async function init(){
   updateNotificationUI();
   await loadData();
   if(currentPerson) await syncPushPerson();
-  else openPersonSheet();
   realtime();
 }
 init();
