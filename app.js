@@ -540,7 +540,11 @@ async function init(){
   if(currentPerson) localStorage.setItem("casaPerson",currentPerson);
 
   bind();
-  if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(console.error);
+  if("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("./sw.js?v=13",{updateViaCache:"none"})
+      .then(reg=>reg.update())
+      .catch(console.error);
+  }
   const initialUrl=new URL(location.href);
   const urlOwner=initialUrl.searchParams.get("owner");
   if(EVENT_OWNERS.includes(urlOwner)) selectedOwnerView=urlOwner;
