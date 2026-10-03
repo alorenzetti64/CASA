@@ -8,11 +8,13 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const CATEGORIES = ["Tutte","Importante","Famiglia","Casa","Da ricordare","Idea"];
 const AUTHORS = ["Angelo","Luana","Manuela"];
+const EVENT_OWNERS = ["Mamma","Babbo","Manu","Family"];
+const OWNER_EMOJI = {Mamma:"👩",Babbo:"👨",Manu:"👧",Family:"🏠"};
 const emoji = {Importante:"❤️",Famiglia:"👨‍👩‍👧",Casa:"🏠","Da ricordare":"⏰",Idea:"💡"};
 const klass = {Importante:"important",Famiglia:"family",Casa:"home","Da ricordare":"remember",Idea:"idea"};
 
 let posts = [], events = [], matches = [], postReads = [], selectedCategory = "Tutte", selectedDate = null, openMenu = null;
-let currentPerson = null, currentUnreadPostId = null;
+let currentPerson = null, currentUnreadPostId = null, selectedOwnerView = "Family";
 const dismissedUnread = new Set();
 let cursor = new Date(); cursor.setDate(1);
 
@@ -64,12 +66,22 @@ function catPill(c){ return `<span class="category-pill ${klass[c]||""}">${emoji
 function postTime(ts){ const d=new Date(ts), t=new Date(); if(d.toDateString()===t.toDateString()) return "oggi, "+d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}); return d.toLocaleDateString("it-IT",{day:"numeric",month:"short"})+", "+d.toLocaleTimeString("it-IT",{hour:"2-digit",minute:"2-digit"}); }
 
 function setView(view, updateUrl=true){
-  if(!["home","board","calendar","matches"].includes(view)) view="home";
+  if(!["home","board","calendar","matches","owner"].includes(view)) view="home";
   $$(".view").forEach(v=>v.classList.toggle("active",v.id===`view-${view}`));
   $$(".nav-item").forEach(b=>b.classList.toggle("active",b.dataset.view===view));
-  if(updateUrl){ const u=new URL(location.href); view==="home"?u.searchParams.delete("view"):u.searchParams.set("view",view); history.replaceState({},"",u); }
+  if(updateUrl){
+    const u=new URL(location.href);
+    if(view==="home"){ u.searchParams.delete("view"); u.searchParams.delete("owner"); }
+    else {
+      u.searchParams.set("view",view);
+      if(view==="owner") u.searchParams.set("owner",selectedOwnerView);
+      else u.searchParams.delete("owner");
+    }
+    history.replaceState({},"",u);
+  }
   if(view==="calendar") renderCalendar();
   if(view==="matches") renderMatches();
+  if(view==="owner") renderOwnerEvents();
   window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -97,10 +109,11 @@ function postCard(p, controls=true){
 function eventCard(e){
   if(e.source==="match") return matchCard(e.match);
   const d=dateFrom(e.start_date);
+  const owner=EVENT_OWNERS.includes(e.event_owner)?e.event_owner:"Family";
   return `<article class="event-card" data-id="${e.id}">
     <button class="more-button" data-menu="event:${e.id}">•••</button>
     <div class="event-row"><div class="event-datebox"><b>${d.getDate()}</b>${d.toLocaleDateString("it-IT",{month:"short"}).toUpperCase()}</div>
-    <div><h3>${linkify(e.title)}</h3><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}</small>${e.description?`<p style="margin-top:7px">${linkify(e.description,true)}</p>`:""}</div></div>
+    <div><span class="event-owner-pill">${OWNER_EMOJI[owner]} ${esc(owner)}</span><h3>${linkify(e.title)}</h3><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}</small>${e.description?`<p style="margin-top:7px">${linkify(e.description,true)}</p>`:""}</div></div>
     ${openMenu===`event:${e.id}` ? menuHtml("event",e.id):""}
   </article>`;
 }
@@ -120,6 +133,24 @@ function renderMatches(){
   if(!box) return;
   const upcoming=upcomingMatches();
   box.innerHTML=upcoming.length?upcoming.map(matchCard).join(""):`<div class="empty-state">Nessuna partita in programma da oggi in avanti.</div>`;
+}
+function openOwnerView(owner){
+  if(!EVENT_OWNERS.includes(owner)) return;
+  selectedOwnerView=owner;
+  setView("owner");
+}
+function renderOwnerEvents(){
+  const box=$("#ownerEventList");
+  if(!box) return;
+  const owner=EVENT_OWNERS.includes(selectedOwnerView)?selectedOwnerView:"Family";
+  $("#ownerViewIcon").textContent=OWNER_EMOJI[owner];
+  $("#ownerViewTitle").textContent=`Eventi ${owner}`;
+  $("#ownerViewSubtitle").textContent="Gli eventi da oggi in avanti.";
+  const list=events
+    .filter(e=>(EVENT_OWNERS.includes(e.event_owner)?e.event_owner:"Family")===owner)
+    .filter(e=>(e.end_date||e.start_date)>=todayKey())
+    .sort((a,b)=>(a.start_date+(a.start_time||"")).localeCompare(b.start_date+(b.start_time||"")));
+  box.innerHTML=list.length?list.map(eventCard).join(""):`<div class="empty-state">Nessun evento di ${esc(owner)} da oggi in avanti.</div>`;
 }
 function menuHtml(type,id){
   const notify = type==="post" ? `<button data-notify-post="${id}">🔔 Invia notifica</button>` : "";
@@ -162,7 +193,7 @@ function renderCalendar(){
   $("#eventList").innerHTML=list.length?list.map(eventCard).join(""):`<div class="empty-state">Nessun evento da mostrare.</div>`;
 }
 
-function renderAll(){ renderHome(); renderBoard(); renderCalendar(); renderMatches(); updateNotificationUI(); updatePersonUI(); }
+function renderAll(){ renderHome(); renderBoard(); renderCalendar(); renderMatches(); renderOwnerEvents(); updateNotificationUI(); updatePersonUI(); }
 
 async function loadMatches(showToast=false){
   try{
@@ -304,8 +335,13 @@ function postFields(p={}){
   ${recipientSelector(p.recipients)}
   ${authorSelector(p.author)}`;
 }
+function eventOwnerSelector(current="Family"){
+  const selected=EVENT_OWNERS.includes(current)?current:"Family";
+  return `<div class="field"><label>Di chi è questo evento?</label><div class="event-owner-pills">${EVENT_OWNERS.map(name=>`<button type="button" class="event-owner-pill-button ${name===selected?"active":""}" data-event-owner="${name}">${OWNER_EMOJI[name]} ${name}</button>`).join("")}</div><input type="hidden" name="event_owner" value="${selected}"></div>`;
+}
 function eventFields(e={}){
-  return `<div class="field"><label>Titolo</label><input name="title" maxlength="100" required value="${esc(e.title||"")}" placeholder="Es. Cena tutti insieme"></div>
+  return `${eventOwnerSelector(e.event_owner||"Family")}
+  <div class="field"><label>Titolo</label><input name="title" maxlength="100" required value="${esc(e.title||"")}" placeholder="Es. Cena tutti insieme"></div>
   <div class="field-row"><div class="field"><label>Data</label><input type="date" name="start_date" required value="${e.start_date||iso()}"></div><div class="field"><label>Ora</label><input type="time" name="start_time" value="${e.start_time?e.start_time.slice(0,5):""}"></div></div>
   <div class="field"><label class="switch-row"><input type="checkbox" name="all_day" ${e.all_day?"checked":""}> Tutto il giorno</label></div>
   <div class="field"><label>Data fine <span style="font-weight:400;color:#777">(facoltativa)</span></label><input type="date" name="end_date" value="${e.end_date||""}"></div>
@@ -333,7 +369,10 @@ async function saveForm(ev){
     if(!recipients.length){toast("Scegli almeno una persona che deve leggere l’annuncio");return;}
     row={title:String(fd.get("title")||"").trim(),body:String(fd.get("body")||"").trim(),category:fd.get("category"),author,recipients,updated_at:new Date().toISOString()};
   }
-  else row={title:String(fd.get("title")||"").trim(),start_date:fd.get("start_date"),start_time:fd.get("all_day")?null:(fd.get("start_time")||null),end_date:fd.get("end_date")||null,all_day:!!fd.get("all_day"),location:String(fd.get("location")||"").trim()||null,description:String(fd.get("description")||"").trim()||null,category:fd.get("category"),author,updated_at:new Date().toISOString()};
+  else {
+    const eventOwner=String(fd.get("event_owner")||"Family");
+    row={title:String(fd.get("title")||"").trim(),start_date:fd.get("start_date"),start_time:fd.get("all_day")?null:(fd.get("start_time")||null),end_date:fd.get("end_date")||null,all_day:!!fd.get("all_day"),location:String(fd.get("location")||"").trim()||null,description:String(fd.get("description")||"").trim()||null,category:fd.get("category"),author,event_owner:EVENT_OWNERS.includes(eventOwner)?eventOwner:"Family",updated_at:new Date().toISOString()};
+  }
   const table=type==="post"?"casa_family_posts":"casa_family_events";
   const q=id?supabase.from(table).update(row).eq("id",id):supabase.from(table).insert(row);
   const {error}=await q; if(error){console.error(error);toast("Non sono riuscito a salvare");return;}
@@ -459,6 +498,7 @@ function bind(){
   document.addEventListener("click",async ev=>{
     const person=ev.target.closest("[data-person-choice]"); if(person){await setPerson(person.dataset.personChoice);return;}
     const reader=ev.target.closest("[data-mark-reader]"); if(reader){await markReaderRead(reader.dataset.markReader);return;}
+    const ownerCard=ev.target.closest("[data-owner]"); if(ownerCard){openOwnerView(ownerCard.dataset.owner);return;}
     const v=ev.target.closest("[data-view]"); if(v){setView(v.dataset.view);return;}
     if(ev.target.closest("#globalAdd")){openChoice();return;}
     if(ev.target.closest("#personButton")){openPersonSheet();return;}
@@ -469,6 +509,7 @@ function bind(){
     const add=ev.target.closest("[data-add]"); if(add){openForm(add.dataset.add);return;}
     const chip=ev.target.closest("[data-category]"); if(chip){selectedCategory=chip.dataset.category;renderBoard();return;}
     const d=ev.target.closest("[data-date]"); if(d){selectedDate=selectedDate===d.dataset.date?null:d.dataset.date;renderCalendar();return;}
+    const eventOwner=ev.target.closest("[data-event-owner]"); if(eventOwner){ eventOwner.closest(".field").querySelectorAll(".event-owner-pill-button").forEach(x=>x.classList.toggle("active",x===eventOwner)); eventOwner.closest(".field").querySelector("input[name=event_owner]").value=eventOwner.dataset.eventOwner; return; }
     const a=ev.target.closest("[data-author]"); if(a){ $(".author-pill").forEach(x=>x.classList.toggle("active",x===a)); a.closest(".field").querySelector("input[name=author]").value=a.dataset.author; return; }
     const m=ev.target.closest("[data-menu]"); if(m){openMenu=openMenu===m.dataset.menu?null:m.dataset.menu;renderBoard();renderCalendar();return;}
     const nt=ev.target.closest("[data-notify-post]"); if(nt){await notifyOldPost(nt.dataset.notifyPost);return;}
@@ -500,7 +541,10 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(console.error);
-  setView(new URL(location.href).searchParams.get("view")||"home",false);
+  const initialUrl=new URL(location.href);
+  const urlOwner=initialUrl.searchParams.get("owner");
+  if(EVENT_OWNERS.includes(urlOwner)) selectedOwnerView=urlOwner;
+  setView(initialUrl.searchParams.get("view")||"home",false);
   updatePersonUI();
   updateNotificationUI();
   await loadData();
