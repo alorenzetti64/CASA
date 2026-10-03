@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=9" />
+  <link rel="stylesheet" href="./styles.css?v=11" />
 </head>
 <body>
   <div class="app-shell">
@@ -73,11 +73,21 @@
             <strong>Calendario</strong>
             <small>Prossimi eventi e impegni</small>
           </button>
-          <button class="home-tile matches-tile" data-view="matches">
-            <span class="tile-icon">🏐</span>
-            <strong>Partite del Babbo</strong>
-            <small>Le partite prese dal calendario SUPERLEGA</small>
+        </div>
+
+        <div class="family-shortcuts">
+          <button class="matches-compact" data-view="matches">
+            <span>🏐</span>
+            <div><strong>Partite del Babbo</strong><small>Calendario SUPERLEGA</small></div>
+            <b>›</b>
           </button>
+
+          <div class="owner-grid">
+            <button class="owner-card mamma" data-owner="Mamma"><span>👩</span><strong>Mamma</strong><small>I suoi eventi</small></button>
+            <button class="owner-card babbo" data-owner="Babbo"><span>👨</span><strong>Babbo</strong><small>I suoi eventi</small></button>
+            <button class="owner-card manu" data-owner="Manu"><span>👧</span><strong>Manu</strong><small>I suoi eventi</small></button>
+            <button class="owner-card family" data-owner="Family"><span>🏠</span><strong>Family</strong><small>Eventi di tutti</small></button>
+          </div>
         </div>
 
         <section class="latest-section">
@@ -102,6 +112,17 @@
         </div>
         <div id="categoryFilters" class="filter-row"></div>
         <div id="postList" class="content-list"></div>
+      </section>
+
+      <section id="view-owner" class="view">
+        <div class="page-head">
+          <div>
+            <span class="page-icon" id="ownerViewIcon">🏠</span>
+            <h1 id="ownerViewTitle">Eventi Family</h1>
+            <p id="ownerViewSubtitle">Gli eventi da oggi in avanti.</p>
+          </div>
+        </div>
+        <div id="ownerEventList" class="content-list"></div>
       </section>
 
       <section id="view-matches" class="view">
@@ -202,6 +223,6 @@
 
   <div id="toast" class="toast hidden" role="status"></div>
 
-  <script type="module" src="./app.js?v=10"></script>
+  <script type="module" src="./app.js?v=11"></script>
 </body>
 </html>
