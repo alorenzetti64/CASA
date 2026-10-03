@@ -1,5 +1,5 @@
-const CACHE = "casa-family-v11";
-const APP_SHELL = ["./","./index.html","./styles.css?v=11","./app.js?v=11","./manifest.json","./icons/icon-192.png","./icons/icon-512.png"];
+const CACHE = "casa-family-v12";
+const APP_SHELL = ["./","./index.html","./styles.css?v=12","./app.js?v=12","./manifest.json","./icons/icon-192.png","./icons/icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(c => c.addAll(APP_SHELL)).then(() => self.skipWaiting()));
