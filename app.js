@@ -511,7 +511,7 @@ function bind(){
     const d=ev.target.closest("[data-date]"); if(d){selectedDate=selectedDate===d.dataset.date?null:d.dataset.date;renderCalendar();return;}
     const eventOwner=ev.target.closest("[data-event-owner]"); if(eventOwner){ eventOwner.closest(".field").querySelectorAll(".event-owner-pill-button").forEach(x=>x.classList.toggle("active",x===eventOwner)); eventOwner.closest(".field").querySelector("input[name=event_owner]").value=eventOwner.dataset.eventOwner; return; }
     const a=ev.target.closest("[data-author]"); if(a){ $(".author-pill").forEach(x=>x.classList.toggle("active",x===a)); a.closest(".field").querySelector("input[name=author]").value=a.dataset.author; return; }
-    const m=ev.target.closest("[data-menu]"); if(m){openMenu=openMenu===m.dataset.menu?null:m.dataset.menu;renderBoard();renderCalendar();return;}
+    const m=ev.target.closest("[data-menu]"); if(m){openMenu=openMenu===m.dataset.menu?null:m.dataset.menu;renderBoard();renderCalendar();renderOwnerEvents();return;}
     const nt=ev.target.closest("[data-notify-post]"); if(nt){await notifyOldPost(nt.dataset.notifyPost);return;}
     const ed=ev.target.closest("[data-edit]"); if(ed){const [type,id]=ed.dataset.edit.split(":"); const item=(type==="post"?posts:events).find(x=>x.id===id); openMenu=null; openForm(type,item);return;}
     const del=ev.target.closest("[data-delete]"); if(del){const [type,id]=del.dataset.delete.split(":"); await removeItem(type,id);return;}
