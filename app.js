@@ -96,9 +96,10 @@ function renderHero(){
 function miniEvent(e){ return `<div class="mini-event"><div class="emoji">${e.source==="match"?"🏐":(e.all_day?"🎉":"🕒")}</div><div><strong>${linkify(e.title)}</strong><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}${e.source==="match"?" · Partita del Babbo":""}</small></div></div>`; }
 
 function postCard(p, controls=true){
-  return `<article class="post-card" data-id="${p.id}">
+  return `<article class="post-card ${p.pinned?"pinned-post":""}" data-id="${p.id}">
     ${controls?`<button class="more-button" data-menu="post:${p.id}">•••</button>`:""}
     <div class="post-meta"><span>${catPill(p.category)}</span><time>${postTime(p.created_at)}</time></div>
+    ${p.pinned?`<div class="pinned-label">📌 Fissato in alto</div>`:""}
     <h3>${linkify(p.title)}</h3><p>${linkify(p.body||"",true)}</p>
     <div class="post-footer">${esc(p.author||"Famiglia")}</div>
     <div class="post-read-status">${recipientsOf(p).map(name=>{const done=readsOf(p).has(name);return `<span class="read-chip ${done?"done":""}">${done?"✓":"○"} ${esc(name)}</span>`;}).join("")}</div>
@@ -153,8 +154,15 @@ function renderOwnerEvents(){
   box.innerHTML=list.length?list.map(eventCard).join(""):`<div class="empty-state">Nessun evento di ${esc(owner)} da oggi in avanti.</div>`;
 }
 function menuHtml(type,id){
-  const notify = type==="post" ? `<button data-notify-post="${id}">🔔 Invia notifica</button>` : "";
-  return `<div class="action-menu">${notify}<button data-edit="${type}:${id}">Modifica</button><button class="danger" data-delete="${type}:${id}">Elimina</button></div>`;
+  let pin="", notify="";
+  if(type==="post"){
+    const p=posts.find(x=>x.id===id);
+    notify=`<button data-notify-post="${id}">🔔 Invia notifica</button>`;
+    pin=p?.pinned
+      ? `<button data-pin-post="${id}">📌 Rimuovi dall'alto</button>`
+      : `<button data-pin-post="${id}">📌 Fissa in alto</button>`;
+  }
+  return `<div class="action-menu">${pin}${notify}<button data-edit="${type}:${id}">Modifica</button><button class="danger" data-delete="${type}:${id}">Elimina</button></div>`;
 }
 
 function renderHome(){
@@ -167,9 +175,17 @@ function renderHome(){
   $("#boardBadge").textContent=unseen; $("#boardBadge").classList.toggle("hidden",!unseen);
 }
 
+function sortBoardPosts(list){
+  return [...list].sort((a,b)=>{
+    if(!!a.pinned!==!!b.pinned) return a.pinned?-1:1;
+    if(a.pinned&&b.pinned) return new Date(b.pinned_at||b.created_at)-new Date(a.pinned_at||a.created_at);
+    return new Date(b.created_at)-new Date(a.created_at);
+  });
+}
 function renderBoard(){
   $("#categoryFilters").innerHTML=CATEGORIES.map(c=>`<button class="filter-chip ${c===selectedCategory?"active":""}" data-category="${esc(c)}">${c==="Tutte"?"Tutte":`${emoji[c]||"📌"} ${esc(c)}`}</button>`).join("");
-  const list=selectedCategory==="Tutte"?posts:posts.filter(p=>p.category===selectedCategory);
+  const base=selectedCategory==="Tutte"?posts:posts.filter(p=>p.category===selectedCategory);
+  const list=sortBoardPosts(base);
   $("#postList").innerHTML=list.length?list.map(p=>postCard(p,true)).join(""):`<div class="empty-state">Nessuna notizia in questa categoria.</div>`;
   if(posts[0]) localStorage.setItem("casaLastSeenPostTs",String(new Date(posts[0].created_at).getTime()));
 }
@@ -385,6 +401,33 @@ async function removeItem(type,id){
   openMenu=null; toast("Eliminato"); await loadData();
 }
 
+async function togglePinnedPost(id){
+  const p=posts.find(x=>x.id===id);
+  if(!p) return;
+
+  const pinning=!p.pinned;
+  if(pinning && posts.filter(x=>x.pinned).length>=3){
+    toast("Puoi fissare in alto al massimo 3 annunci");
+    return;
+  }
+
+  openMenu=null;
+  const {error}=await supabase
+    .from("casa_family_posts")
+    .update({pinned:pinning})
+    .eq("id",id);
+
+  if(error){
+    console.error("CASA pin post error",error);
+    const msg=String(error.message||"");
+    toast(msg.includes("massimo 3")?"Puoi fissare in alto al massimo 3 annunci":"Non sono riuscito ad aggiornare l'annuncio");
+    return;
+  }
+
+  toast(pinning?"Annuncio fissato in alto":"Annuncio rimosso dall'alto");
+  await loadData();
+}
+
 async function notifyOldPost(id){
   const p=posts.find(x=>x.id===id);
   if(!p) return;
@@ -512,6 +555,7 @@ function bind(){
     const eventOwner=ev.target.closest("[data-event-owner]"); if(eventOwner){ eventOwner.closest(".field").querySelectorAll(".event-owner-pill-button").forEach(x=>x.classList.toggle("active",x===eventOwner)); eventOwner.closest(".field").querySelector("input[name=event_owner]").value=eventOwner.dataset.eventOwner; return; }
     const a=ev.target.closest("[data-author]"); if(a){ $(".author-pill").forEach(x=>x.classList.toggle("active",x===a)); a.closest(".field").querySelector("input[name=author]").value=a.dataset.author; return; }
     const m=ev.target.closest("[data-menu]"); if(m){openMenu=openMenu===m.dataset.menu?null:m.dataset.menu;renderBoard();renderCalendar();renderOwnerEvents();return;}
+    const pin=ev.target.closest("[data-pin-post]"); if(pin){await togglePinnedPost(pin.dataset.pinPost);return;}
     const nt=ev.target.closest("[data-notify-post]"); if(nt){await notifyOldPost(nt.dataset.notifyPost);return;}
     const ed=ev.target.closest("[data-edit]"); if(ed){const [type,id]=ed.dataset.edit.split(":"); const item=(type==="post"?posts:events).find(x=>x.id===id); openMenu=null; openForm(type,item);return;}
     const del=ev.target.closest("[data-delete]"); if(del){const [type,id]=del.dataset.delete.split(":"); await removeItem(type,id);return;}
