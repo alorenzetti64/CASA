@@ -111,6 +111,8 @@ button { color: inherit; }
 .filter-chip.active { background:var(--green); border-color:var(--green); color:white; }
 .content-list { display:grid; gap:12px; }
 .post-card, .event-card { position:relative; background:white; border-radius:22px; border:1px solid var(--line); box-shadow:var(--shadow); padding:15px; }
+.post-card.pinned-post { border-color:#efc65e; background:linear-gradient(145deg,#fffdf7,#fff8df); box-shadow:0 10px 30px rgba(154,113,16,.12); }
+.pinned-label { display:inline-flex; align-items:center; gap:5px; margin:0 0 8px; padding:5px 8px; border-radius:999px; background:#fff0bd; color:#8b6200; font-size:10px; font-weight:900; letter-spacing:.03em; }
 .post-meta, .event-meta { display:flex; align-items:center; justify-content:space-between; gap:10px; color:var(--muted); font-size:12px; margin-bottom:8px; }
 .category-pill { display:inline-flex; align-items:center; gap:5px; padding:6px 9px; border-radius:999px; font-weight:800; font-size:11px; color:#30405d; background:var(--blue-soft); }
 .category-pill.important { background:#ffe3e8; color:#c8344a; }
