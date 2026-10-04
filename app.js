@@ -585,7 +585,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=13",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=14",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
