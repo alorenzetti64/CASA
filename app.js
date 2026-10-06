@@ -184,7 +184,7 @@ function sortBoardPosts(list){
 }
 function postMatchesReaderFilter(p, filter){
   const recipients=recipientsOf(p);
-  if(filter==="Family") return AUTHORS.every(name=>recipients.includes(name));
+  if(filter==="Family") return true;
   if(filter==="Mamma") return recipients.includes("Luana");
   if(filter==="Babbo") return recipients.includes("Angelo");
   if(filter==="Manuela") return recipients.includes("Manuela");
@@ -594,7 +594,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=15",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=16",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
