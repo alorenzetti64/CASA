@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=14" />
+  <link rel="stylesheet" href="./styles.css?v=15" />
 </head>
 <body>
   <div class="app-shell">
@@ -110,7 +110,10 @@
           </div>
           <button class="circle-add" data-add="post" aria-label="Aggiungi notizia">+</button>
         </div>
-        <div id="categoryFilters" class="filter-row"></div>
+        <div class="reader-filter-wrap">
+          <span>Chi deve leggere l’avviso:</span>
+          <div id="categoryFilters" class="filter-row"></div>
+        </div>
         <div id="postList" class="content-list"></div>
       </section>
 
@@ -223,6 +226,6 @@
 
   <div id="toast" class="toast hidden" role="status"></div>
 
-  <script type="module" src="./app.js?v=14"></script>
+  <script type="module" src="./app.js?v=15"></script>
 </body>
 </html>
