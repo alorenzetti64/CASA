@@ -13,7 +13,7 @@ const OWNER_EMOJI = {Mamma:"👩",Babbo:"👨",Manu:"👧",Family:"🏠"};
 const emoji = {Importante:"❤️",Famiglia:"👨‍👩‍👧",Casa:"🏠","Da ricordare":"⏰",Idea:"💡"};
 const klass = {Importante:"important",Famiglia:"family",Casa:"home","Da ricordare":"remember",Idea:"idea"};
 
-let posts = [], events = [], matches = [], postReads = [], selectedCategory = "Tutte", selectedDate = null, openMenu = null;
+let posts = [], events = [], matches = [], postReads = [], selectedReaderFilter = "Family", selectedDate = null, openMenu = null;
 let currentPerson = null, currentUnreadPostId = null, selectedOwnerView = "Family";
 const dismissedUnread = new Set();
 let cursor = new Date(); cursor.setDate(1);
@@ -182,11 +182,20 @@ function sortBoardPosts(list){
     return new Date(b.created_at)-new Date(a.created_at);
   });
 }
+function postMatchesReaderFilter(p, filter){
+  const recipients=recipientsOf(p);
+  if(filter==="Family") return AUTHORS.every(name=>recipients.includes(name));
+  if(filter==="Mamma") return recipients.includes("Luana");
+  if(filter==="Babbo") return recipients.includes("Angelo");
+  if(filter==="Manuela") return recipients.includes("Manuela");
+  return true;
+}
 function renderBoard(){
-  $("#categoryFilters").innerHTML=CATEGORIES.map(c=>`<button class="filter-chip ${c===selectedCategory?"active":""}" data-category="${esc(c)}">${c==="Tutte"?"Tutte":`${emoji[c]||"📌"} ${esc(c)}`}</button>`).join("");
-  const base=selectedCategory==="Tutte"?posts:posts.filter(p=>p.category===selectedCategory);
+  const filters=["Family","Mamma","Babbo","Manuela"];
+  $("#categoryFilters").innerHTML=filters.map(name=>`<button class="filter-chip ${name===selectedReaderFilter?"active":""}" data-reader-filter="${name}">${name}</button>`).join("");
+  const base=posts.filter(p=>postMatchesReaderFilter(p,selectedReaderFilter));
   const list=sortBoardPosts(base);
-  $("#postList").innerHTML=list.length?list.map(p=>postCard(p,true)).join(""):`<div class="empty-state">Nessuna notizia in questa categoria.</div>`;
+  $("#postList").innerHTML=list.length?list.map(p=>postCard(p,true)).join(""):`<div class="empty-state">Nessun annuncio per ${esc(selectedReaderFilter)}.</div>`;
   if(posts[0]) localStorage.setItem("casaLastSeenPostTs",String(new Date(posts[0].created_at).getTime()));
 }
 
@@ -550,7 +559,7 @@ function bind(){
     if(ev.target.closest("[data-close-sheet]")){closeChoice();return;}
     if(ev.target.closest("[data-close-form]")){closeForm();return;}
     const add=ev.target.closest("[data-add]"); if(add){openForm(add.dataset.add);return;}
-    const chip=ev.target.closest("[data-category]"); if(chip){selectedCategory=chip.dataset.category;renderBoard();return;}
+    const chip=ev.target.closest("[data-reader-filter]"); if(chip){selectedReaderFilter=chip.dataset.readerFilter;renderBoard();return;}
     const d=ev.target.closest("[data-date]"); if(d){selectedDate=selectedDate===d.dataset.date?null:d.dataset.date;renderCalendar();return;}
     const eventOwner=ev.target.closest("[data-event-owner]"); if(eventOwner){ eventOwner.closest(".field").querySelectorAll(".event-owner-pill-button").forEach(x=>x.classList.toggle("active",x===eventOwner)); eventOwner.closest(".field").querySelector("input[name=event_owner]").value=eventOwner.dataset.eventOwner; return; }
     const a=ev.target.closest("[data-author]"); if(a){ $(".author-pill").forEach(x=>x.classList.toggle("active",x===a)); a.closest(".field").querySelector("input[name=author]").value=a.dataset.author; return; }
@@ -585,7 +594,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=14",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=15",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
