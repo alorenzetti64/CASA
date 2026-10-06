@@ -41,7 +41,20 @@ function toast(msg){ const e=$("#toast"); e.textContent=msg; e.classList.remove(
 function iso(d=new Date()){ return [d.getFullYear(),String(d.getMonth()+1).padStart(2,"0"),String(d.getDate()).padStart(2,"0")].join("-"); }
 function dateFrom(s){ const [y,m,d]=s.split("-").map(Number); return new Date(y,m-1,d); }
 function onDate(e,d){ return e.start_date===d || (!!e.end_date && e.start_date<=d && e.end_date>=d); }
-function timeLabel(e){ return e.all_day || !e.start_time ? "Tutta la giornata" : e.start_time.slice(0,5); }
+function timeLabel(e){
+  if(e.all_day || !e.start_time) return "Tutta la giornata";
+  const start=e.start_time.slice(0,5);
+  const end=e.end_time?e.end_time.slice(0,5):"";
+  return end?`${start}–${end}`:start;
+}
+function addHoursToStart(startDate,startTime,hours=2){
+  if(!startDate||!startTime) return {end_date:null,end_time:null};
+  const [y,m,d]=String(startDate).split("-").map(Number);
+  const [hh,mm]=String(startTime).slice(0,5).split(":").map(Number);
+  const dt=new Date(y,m-1,d,hh,mm,0,0);
+  dt.setHours(dt.getHours()+hours);
+  return {end_date:iso(dt),end_time:`${String(dt.getHours()).padStart(2,"0")}:${String(dt.getMinutes()).padStart(2,"0")}`};
+}
 function romeDateKey(value){
   const p=new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Rome",year:"numeric",month:"2-digit",day:"2-digit"}).formatToParts(new Date(value));
   const m=Object.fromEntries(p.map(x=>[x.type,x.value]));
@@ -367,9 +380,9 @@ function eventOwnerSelector(current="Family"){
 function eventFields(e={}){
   return `${eventOwnerSelector(e.event_owner||"Family")}
   <div class="field"><label>Titolo</label><input name="title" maxlength="100" required value="${esc(e.title||"")}" placeholder="Es. Cena tutti insieme"></div>
-  <div class="field-row"><div class="field"><label>Data</label><input type="date" name="start_date" required value="${e.start_date||iso()}"></div><div class="field"><label>Ora</label><input type="time" name="start_time" value="${e.start_time?e.start_time.slice(0,5):""}"></div></div>
+  <div class="field-row"><div class="field"><label>Data inizio</label><input type="date" name="start_date" required value="${e.start_date||iso()}"></div><div class="field"><label>Ora inizio</label><input type="time" name="start_time" value="${e.start_time?e.start_time.slice(0,5):""}"></div></div>
   <div class="field"><label class="switch-row"><input type="checkbox" name="all_day" ${e.all_day?"checked":""}> Tutto il giorno</label></div>
-  <div class="field"><label>Data fine <span style="font-weight:400;color:#777">(facoltativa)</span></label><input type="date" name="end_date" value="${e.end_date||""}"></div>
+  <div class="field-row"><div class="field"><label>Data fine <span style="font-weight:400;color:#777">(facoltativa)</span></label><input type="date" name="end_date" value="${e.end_date||""}"></div><div class="field"><label>Ora fine <span style="font-weight:400;color:#777">(facoltativa)</span></label><input type="time" name="end_time" value="${e.end_time?e.end_time.slice(0,5):""}"><div class="field-hint">Se la lasci vuota, CASA considera 2 ore dall’ora di inizio.</div></div></div>
   <div class="field"><label>Luogo <span style="font-weight:400;color:#777">(facoltativo)</span></label><input name="location" value="${esc(e.location||"")}" placeholder="Es. Ristorante Da Marco"></div>
   ${categorySelect(e.category)}
   <div class="field"><label>Descrizione <span style="font-weight:400;color:#777">(facoltativa)</span></label><textarea name="description" placeholder="Aggiungi qualche dettaglio…">${esc(e.description||"")}</textarea></div>
@@ -396,7 +409,27 @@ async function saveForm(ev){
   }
   else {
     const eventOwner=String(fd.get("event_owner")||"Family");
-    row={title:String(fd.get("title")||"").trim(),start_date:fd.get("start_date"),start_time:fd.get("all_day")?null:(fd.get("start_time")||null),end_date:fd.get("end_date")||null,all_day:!!fd.get("all_day"),location:String(fd.get("location")||"").trim()||null,description:String(fd.get("description")||"").trim()||null,category:fd.get("category"),author,event_owner:EVENT_OWNERS.includes(eventOwner)?eventOwner:"Family",updated_at:new Date().toISOString()};
+    const allDay=!!fd.get("all_day");
+    const startDate=String(fd.get("start_date")||"");
+    const startTime=allDay?null:(fd.get("start_time")||null);
+    let endDate=fd.get("end_date")||null;
+    let endTime=allDay?null:(fd.get("end_time")||null);
+
+    if(!allDay && startTime){
+      if(!endTime){
+        const autoEnd=addHoursToStart(startDate,startTime,2);
+        endTime=autoEnd.end_time;
+        if(!endDate) endDate=autoEnd.end_date;
+      }else if(!endDate){
+        endDate=startDate;
+        if(String(endTime)<String(startTime)){
+          const next=addHoursToStart(startDate,"23:59",0);
+          const d=dateFrom(startDate); d.setDate(d.getDate()+1); endDate=iso(d);
+        }
+      }
+    }
+
+    row={title:String(fd.get("title")||"").trim(),start_date:startDate,start_time:startTime,end_date:endDate,end_time:endTime,all_day:allDay,location:String(fd.get("location")||"").trim()||null,description:String(fd.get("description")||"").trim()||null,category:fd.get("category"),author,event_owner:EVENT_OWNERS.includes(eventOwner)?eventOwner:"Family",updated_at:new Date().toISOString()};
   }
   const table=type==="post"?"casa_family_posts":"casa_family_events";
   const q=id?supabase.from(table).update(row).eq("id",id):supabase.from(table).insert(row);
@@ -594,7 +627,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=16",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=17",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
