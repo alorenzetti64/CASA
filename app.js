@@ -66,7 +66,7 @@ function romeTime(value){
 function todayKey(){ return romeDateKey(new Date()); }
 function matchAsEvent(m){
   const startDate=romeDateKey(m.start);
-  return {id:`match:${m.id}`,title:m.title,start_date:startDate,end_date:startDate,start_time:m.all_day?null:romeTime(m.start),all_day:!!m.all_day,location:m.location||"",description:"",source:"match",match:m};
+  return {id:`match:${m.id}`,title:m.title,start_date:startDate,end_date:startDate,start_time:m.all_day?null:romeTime(m.start),all_day:!!m.all_day,location:m.location||"",description:"",event_owner:"Babbo",source:"match",match:m};
 }
 function calendarItems(){ return [...events,...matches.map(matchAsEvent)]; }
 function upcomingMatches(){
@@ -160,7 +160,8 @@ function renderOwnerEvents(){
   $("#ownerViewIcon").textContent=OWNER_EMOJI[owner];
   $("#ownerViewTitle").textContent=`Eventi ${owner}`;
   $("#ownerViewSubtitle").textContent="Gli eventi da oggi in avanti.";
-  const list=events
+  const source=owner==="Babbo"?calendarItems():events;
+  const list=source
     .filter(e=>(EVENT_OWNERS.includes(e.event_owner)?e.event_owner:"Family")===owner)
     .filter(e=>(e.end_date||e.start_date)>=todayKey())
     .sort((a,b)=>(a.start_date+(a.start_time||"")).localeCompare(b.start_date+(b.start_time||"")));
@@ -627,7 +628,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=17",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=18",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
