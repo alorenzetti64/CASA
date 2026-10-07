@@ -4,6 +4,7 @@ const SUPABASE_URL = "https://vqrpkkrqynvlzjufiocn.supabase.co";
 const SUPABASE_KEY = "sb_publishable_RGTsinQvL4hyv94mzNgNHA_uKqOfDuf";
 const PUSH_URL = `${SUPABASE_URL}/functions/v1/casa-family-push`;
 const MATCHES_URL = "https://nulwoygrcubxbskgbvef.supabase.co/functions/v1/casa-matches?all=1";
+const GOOGLE_SYNC_URL = "https://nulwoygrcubxbskgbvef.supabase.co/functions/v1/google-calendar-sync";
 const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const CATEGORIES = ["Tutte","Importante","Famiglia","Casa","Da ricordare","Idea"];
@@ -14,7 +15,7 @@ const emoji = {Importante:"❤️",Famiglia:"👨‍👩‍👧",Casa:"🏠","Da
 const klass = {Importante:"important",Famiglia:"family",Casa:"home","Da ricordare":"remember",Idea:"idea"};
 
 let posts = [], events = [], matches = [], postReads = [], selectedReaderFilter = "Family", selectedDate = null, openMenu = null;
-let currentPerson = null, currentUnreadPostId = null, selectedOwnerView = "Family";
+let currentPerson = null, currentUnreadPostId = null, selectedOwnerView = "Family", matchesNeedsReconnect = false;
 const dismissedUnread = new Set();
 let cursor = new Date(); cursor.setDate(1);
 
@@ -142,9 +143,13 @@ function matchCard(m){
     <div class="match-content"><h3>🏐 ${linkify(m.title)}</h3><p>${esc(weekday)} · ${esc(when)}${m.location?` · ${linkify(m.location)}`:""}</p><span class="match-source">SUPERLEGA · MATCH</span></div>
   </article>`;
 }
+function reconnectGoogleCard(){
+  return `<div class="error-box"><strong>Google Calendar va ricollegato.</strong><div style="margin-top:6px">Le partite non possono aggiornarsi finché non rinnovi il collegamento.</div><button type="button" class="primary small" data-reconnect-google style="margin-top:12px">Ricollega Google Calendar</button></div>`;
+}
 function renderMatches(){
   const box=$("#matchList");
   if(!box) return;
+  if(matchesNeedsReconnect){ box.innerHTML=reconnectGoogleCard(); return; }
   const upcoming=upcomingMatches();
   box.innerHTML=upcoming.length?upcoming.map(matchCard).join(""):`<div class="empty-state">Nessuna partita in programma da oggi in avanti.</div>`;
 }
@@ -165,7 +170,8 @@ function renderOwnerEvents(){
     .filter(e=>(EVENT_OWNERS.includes(e.event_owner)?e.event_owner:"Family")===owner)
     .filter(e=>(e.end_date||e.start_date)>=todayKey())
     .sort((a,b)=>(a.start_date+(a.start_time||"")).localeCompare(b.start_date+(b.start_time||"")));
-  box.innerHTML=list.length?list.map(eventCard).join(""):`<div class="empty-state">Nessun evento di ${esc(owner)} da oggi in avanti.</div>`;
+  const cards=list.length?list.map(eventCard).join(""):`<div class="empty-state">Nessun evento di ${esc(owner)} da oggi in avanti.</div>`;
+  box.innerHTML=owner==="Babbo"&&matchesNeedsReconnect ? reconnectGoogleCard()+cards : cards;
 }
 function menuHtml(type,id){
   let pin="", notify="";
@@ -238,11 +244,25 @@ async function loadMatches(showToast=false){
   try{
     const r=await fetch(MATCHES_URL,{cache:"no-store"});
     const data=await r.json();
-    if(!r.ok||!data.connected) throw new Error(data.error||("matches:"+r.status));
+    if(!r.ok||!data.connected){
+      if(data.needs_reconnect){
+        matches=[];
+        matchesNeedsReconnect=true;
+        renderMatches();
+        renderCalendar();
+        renderHome();
+        renderOwnerEvents();
+        if(showToast) toast("Google Calendar va ricollegato");
+        return;
+      }
+      throw new Error(data.error||("matches:"+r.status));
+    }
+    matchesNeedsReconnect=false;
     matches=Array.isArray(data.matches)?data.matches:[];
     renderMatches();
     renderCalendar();
     renderHome();
+    renderOwnerEvents();
     if(showToast) toast("Partite aggiornate");
   }catch(e){
     console.error("CASA matches error",e);
@@ -471,6 +491,23 @@ async function togglePinnedPost(id){
   await loadData();
 }
 
+async function reconnectGoogleCalendar(){
+  try{
+    toast("Apro il collegamento a Google…");
+    const r=await fetch(GOOGLE_SYNC_URL,{
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({action:"casa_start"})
+    });
+    const data=await r.json();
+    if(!r.ok||!data.authorization_url) throw new Error(data.error||"oauth-start");
+    location.href=data.authorization_url;
+  }catch(e){
+    console.error("CASA Google reconnect error",e);
+    toast("Non sono riuscito ad aprire il collegamento Google");
+  }
+}
+
 async function notifyOldPost(id){
   const p=posts.find(x=>x.id===id);
   if(!p) return;
@@ -588,6 +625,7 @@ function bind(){
     const v=ev.target.closest("[data-view]"); if(v){setView(v.dataset.view);return;}
     if(ev.target.closest("#globalAdd")){openChoice();return;}
     if(ev.target.closest("#personButton")){openPersonSheet();return;}
+    if(ev.target.closest("[data-reconnect-google]")){await reconnectGoogleCalendar();return;}
     if(ev.target.closest("#refreshMatches")){await loadMatches(true);return;}
     if(ev.target.closest("#unreadLater")){dismissUnread();return;}
     if(ev.target.closest("[data-close-sheet]")){closeChoice();return;}
@@ -628,17 +666,24 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=18",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=19",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
   const initialUrl=new URL(location.href);
+  const justConnected=initialUrl.searchParams.get("google")==="connected";
   const urlOwner=initialUrl.searchParams.get("owner");
   if(EVENT_OWNERS.includes(urlOwner)) selectedOwnerView=urlOwner;
   setView(initialUrl.searchParams.get("view")||"home",false);
   updatePersonUI();
   updateNotificationUI();
   await loadData();
+  if(justConnected){
+    const clean=new URL(location.href);
+    clean.searchParams.delete("google");
+    history.replaceState({},"",clean);
+    toast(matchesNeedsReconnect?"Collegamento Google non riuscito":"Google Calendar ricollegato");
+  }
   if(currentPerson) await syncPushPerson();
   realtime();
 }
