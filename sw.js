@@ -1,5 +1,5 @@
-const CACHE = "casa-family-v20";
-const APP_SHELL = ["./?v=20","./index.html?v=20","./styles.css?v=20","./app.js?v=20","./manifest.json?v=20","./icons/icon-192.png","./icons/icon-512.png"];
+const CACHE = "casa-family-v21";
+const APP_SHELL = ["./?v=21","./index.html?v=21","./styles.css?v=21","./app.js?v=21","./manifest.json?v=21","./icons/icon-192.png","./icons/icon-512.png"];
 
 self.addEventListener("install", event => {
   event.waitUntil(caches.open(CACHE).then(c => c.addAll(APP_SHELL)).then(() => self.skipWaiting()));
@@ -14,7 +14,7 @@ self.addEventListener("fetch", event => {
     event.respondWith(
       fetch(new Request(event.request,{cache:"reload"}))
         .catch(() => caches.match(event.request))
-        .then(r => r || caches.match("./index.html?v=20") || caches.match("./?v=20"))
+        .then(r => r || caches.match("./index.html?v=21") || caches.match("./?v=21"))
     );
     return;
   }
