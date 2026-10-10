@@ -3,7 +3,7 @@
   "short_name": "CASA",
   "description": "Bacheca e calendario della famiglia.",
   "lang": "it",
-  "start_url": "./?v=21",
+  "start_url": "./?v=22",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fff8f1",
