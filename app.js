@@ -300,8 +300,12 @@ async function loadData(){
     supabase.from("casa_family_post_reads").select("*")
   ]);
   if(p.error||e.error||r.error){ console.error(p.error||e.error||r.error); $("#todayEvents").innerHTML=`<div class="error-box">Non riesco a collegarmi al diario di famiglia. Riprova tra poco.</div>`; return; }
-  posts=p.data||[]; events=e.data||[]; postReads=r.data||[];
-  await matchPromise;
+
+  posts=p.data||[];
+  events=e.data||[];
+  postReads=r.data||[];
+
+  // Mostra subito gli eventi di CASA: non aspettare il caricamento del calendario SUPERLEGA.
   renderAll();
 
   if(currentUnreadPostId&&!$("#unreadSheet").classList.contains("hidden")){
@@ -314,6 +318,10 @@ async function loadData(){
     }
   }
   showUnreadPopup();
+
+  // Quando arrivano le partite, aggiorna una seconda volta la Home e il calendario.
+  await matchPromise;
+  renderAll();
 }
 
 function updatePersonUI(){
@@ -688,7 +696,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=20",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=21",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
