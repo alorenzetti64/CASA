@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=19" />
+  <link rel="stylesheet" href="./styles.css?v=20" />
 </head>
 <body>
   <div class="app-shell">
@@ -51,10 +51,14 @@
         </div>
 
         <section class="today-card card">
-          <div class="section-heading">
-            <div>
-              <span class="section-kicker">OGGI</span>
-              <h2 id="todayLabel">Oggi</h2>
+          <div class="today-card-head">
+            <div class="today-day-nav">
+              <button id="todayPrevDay" class="today-arrow" type="button" aria-label="Giorno precedente">‹</button>
+              <div class="today-date-copy">
+                <span id="todayKicker" class="section-kicker">OGGI</span>
+                <h2 id="todayLabel">Oggi</h2>
+              </div>
+              <button id="todayNextDay" class="today-arrow" type="button" aria-label="Giorno successivo">›</button>
             </div>
             <button class="text-button" data-view="calendar">Vedi tutto ›</button>
           </div>
@@ -226,6 +230,6 @@
 
   <div id="toast" class="toast hidden" role="status"></div>
 
-  <script type="module" src="./app.js?v=19"></script>
+  <script type="module" src="./app.js?v=20"></script>
 </body>
 </html>
