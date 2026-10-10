@@ -203,6 +203,8 @@ function shiftHomeDate(delta){
 }
 function renderHome(){
   renderHero();
+  $("#todayPrevDay").disabled=false;
+  $("#todayNextDay").disabled=false;
   const selected=dateFrom(homeDate);
   $("#todayKicker").textContent=homeDateKicker(homeDate);
   $("#todayLabel").textContent=selected.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
@@ -293,20 +295,36 @@ async function loadMatches(showToast=false){
 }
 
 async function loadData(){
-  const matchPromise=loadMatches(false);
-  const [p,e,r]=await Promise.all([
-    supabase.from("casa_family_posts").select("*").order("created_at",{ascending:false}),
-    supabase.from("casa_family_events").select("*").order("start_date",{ascending:true}).order("start_time",{ascending:true}),
-    supabase.from("casa_family_post_reads").select("*")
-  ]);
-  if(p.error||e.error||r.error){ console.error(p.error||e.error||r.error); $("#todayEvents").innerHTML=`<div class="error-box">Non riesco a collegarmi al diario di famiglia. Riprova tra poco.</div>`; return; }
+  const eventPromise=supabase.from("casa_family_events").select("*").order("start_date",{ascending:true}).order("start_time",{ascending:true});
+  const postPromise=supabase.from("casa_family_posts").select("*").order("created_at",{ascending:false});
+  const readPromise=supabase.from("casa_family_post_reads").select("*");
 
-  posts=p.data||[];
+  // La card del giorno aspetta soltanto gli eventi: così compare già completa, senza il passaggio "Oggi" vuoto.
+  const e=await eventPromise;
+  if(e.error){
+    console.error(e.error);
+    $("#todayKicker").textContent="OGGI";
+    $("#todayLabel").textContent=dateFrom(homeDate).toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
+    $("#todayEvents").innerHTML=`<div class="error-box">Non riesco a caricare gli impegni. Riprova tra poco.</div>`;
+    return;
+  }
   events=e.data||[];
-  postReads=r.data||[];
+  renderHome();
+  renderCalendar();
+  renderOwnerEvents();
 
-  // Mostra subito gli eventi di CASA: non aspettare il caricamento del calendario SUPERLEGA.
-  renderAll();
+  // Solo dopo aver mostrato la giornata avviamo/aggiorniamo anche SUPERLEGA.
+  const matchPromise=loadMatches(false);
+
+  const [p,r]=await Promise.all([postPromise,readPromise]);
+  if(p.error||r.error){
+    console.error(p.error||r.error);
+  }else{
+    posts=p.data||[];
+    postReads=r.data||[];
+    renderBoard();
+    renderHome();
+  }
 
   if(currentUnreadPostId&&!$("#unreadSheet").classList.contains("hidden")){
     const openPost=posts.find(p=>p.id===currentUnreadPostId);
@@ -319,7 +337,6 @@ async function loadData(){
   }
   showUnreadPopup();
 
-  // Quando arrivano le partite, aggiorna una seconda volta la Home e il calendario.
   await matchPromise;
   renderAll();
 }
@@ -696,7 +713,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=21",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=22",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
