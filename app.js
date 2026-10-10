@@ -16,6 +16,7 @@ const klass = {Importante:"important",Famiglia:"family",Casa:"home","Da ricordar
 
 let posts = [], events = [], matches = [], postReads = [], selectedReaderFilter = "Family", selectedDate = null, openMenu = null;
 let currentPerson = null, currentUnreadPostId = null, selectedOwnerView = "Family", matchesNeedsReconnect = false;
+let homeDate = iso();
 const dismissedUnread = new Set();
 let cursor = new Date(); cursor.setDate(1);
 
@@ -104,7 +105,7 @@ function renderHero(){
   $("#heroTitle").textContent=h<12?"Buongiorno famiglia!":h<18?"Buon pomeriggio famiglia!":"Buonasera famiglia!";
   const n=calendarItems().filter(e=>onDate(e,iso())).length;
   $("#heroSubtitle").textContent=n===0?"Oggi il calendario è tranquillo.":n===1?"Oggi abbiamo una cosa da ricordare.":`Oggi abbiamo ${n} cose da ricordare.`;
-  $("#todayLabel").textContent=new Date().toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
+
 }
 
 function miniEvent(e){ return `<div class="mini-event"><div class="emoji">${e.source==="match"?"🏐":(e.all_day?"🎉":"🕒")}</div><div><strong>${linkify(e.title)}</strong><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}${e.source==="match"?" · Partita del Babbo":""}</small></div></div>`; }
@@ -185,10 +186,29 @@ function menuHtml(type,id){
   return `<div class="action-menu">${pin}${notify}<button data-edit="${type}:${id}">Modifica</button><button class="danger" data-delete="${type}:${id}">Elimina</button></div>`;
 }
 
+function homeDateKicker(key){
+  const today=dateFrom(iso());
+  const target=dateFrom(key);
+  const diff=Math.round((target-today)/86400000);
+  if(diff===0) return "OGGI";
+  if(diff===-1) return "IERI";
+  if(diff===1) return "DOMANI";
+  return "GIORNO";
+}
+function shiftHomeDate(delta){
+  const d=dateFrom(homeDate);
+  d.setDate(d.getDate()+delta);
+  homeDate=iso(d);
+  renderHome();
+}
 function renderHome(){
   renderHero();
-  const today=calendarItems().filter(e=>onDate(e,iso())).sort((a,b)=>(a.start_time||"").localeCompare(b.start_time||""));
-  $("#todayEvents").innerHTML=today.length?today.map(miniEvent).join(""):`<div class="empty-state">Nessun impegno per oggi. Giornata libera 🙂</div>`;
+  const selected=dateFrom(homeDate);
+  $("#todayKicker").textContent=homeDateKicker(homeDate);
+  $("#todayLabel").textContent=selected.toLocaleDateString("it-IT",{weekday:"long",day:"numeric",month:"long"});
+  const dayEvents=calendarItems().filter(e=>onDate(e,homeDate)).sort((a,b)=>(a.start_time||"").localeCompare(b.start_time||""));
+  const emptyLabel=homeDateKicker(homeDate)==="OGGI"?"Nessun impegno per oggi. Giornata libera 🙂":"Nessun impegno in questa giornata.";
+  $("#todayEvents").innerHTML=dayEvents.length?dayEvents.map(miniEvent).join(""):`<div class="empty-state">${emptyLabel}</div>`;
   $("#latestPost").innerHTML=posts[0]?postCard(posts[0],false):`<div class="empty-state">La bacheca è ancora vuota.</div>`;
   const seen=Number(localStorage.getItem("casaLastSeenPostTs")||0);
   const unseen=posts.filter(p=>new Date(p.created_at).getTime()>seen).length;
@@ -627,6 +647,8 @@ function bind(){
     if(ev.target.closest("#personButton")){openPersonSheet();return;}
     if(ev.target.closest("[data-reconnect-google]")){await reconnectGoogleCalendar();return;}
     if(ev.target.closest("#refreshMatches")){await loadMatches(true);return;}
+    if(ev.target.closest("#todayPrevDay")){shiftHomeDate(-1);return;}
+    if(ev.target.closest("#todayNextDay")){shiftHomeDate(1);return;}
     if(ev.target.closest("#unreadLater")){dismissUnread();return;}
     if(ev.target.closest("[data-close-sheet]")){closeChoice();return;}
     if(ev.target.closest("[data-close-form]")){closeForm();return;}
@@ -666,7 +688,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=19",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=20",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
