@@ -251,3 +251,6 @@ button { color: inherit; }
   .today-arrow { width:36px; height:36px; }
   .today-date-copy h2 { font-size:17px; }
 }
+
+.today-loading { padding:14px 12px; border-radius:17px; background:#faf7f2; color:var(--muted); text-align:center; font-size:13px; }
+.today-arrow:disabled { opacity:.35; cursor:default; transform:none; }
