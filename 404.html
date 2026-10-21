@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=24" />
+  <link rel="stylesheet" href="./styles.css?v=25" />
 </head>
 <body>
   <div class="app-shell">
@@ -228,6 +228,22 @@
     </div>
   </div>
 
+  <div id="whatsNewSheet" class="sheet-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="whatsNewTitle">
+    <div class="sheet whats-new-sheet">
+      <button class="sheet-close" data-close-whats-new aria-label="Chiudi">×</button>
+      <div class="whats-new-icon">✨</div>
+      <span class="section-kicker">NOVITÀ IN CASA</span>
+      <h2 id="whatsNewTitle">Adesso trovi tutto più in fretta</h2>
+      <p class="whats-new-intro">Ho aggiunto la ricerca sia nella <strong>Bacheca</strong> sia nel <strong>Calendario</strong>.</p>
+      <div class="whats-new-list">
+        <div><span>📣</span><p><strong>Bacheca</strong><br>Scrivi anche solo qualche lettera e CASA cerca nel titolo, nel testo, nella categoria, nell’autore e nei destinatari.</p></div>
+        <div><span>🗓️</span><p><strong>Calendario</strong><br>Cerca titolo, descrizione, luogo e persona. La ricerca comprende anche eventi passati, Partite del Babbo ed eventi importati da Google ANGELO.</p></div>
+      </div>
+      <label class="whats-new-never"><input id="whatsNewNever" type="checkbox"> <span>Non mostrare più questo messaggio</span></label>
+      <button type="button" class="primary whats-new-ok" data-close-whats-new>Ho capito</button>
+    </div>
+  </div>
+
   <div id="unreadSheet" class="sheet-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="unreadTitle">
     <div class="sheet unread-sheet">
       <button class="sheet-close" id="unreadLater" aria-label="Chiudi">×</button>
@@ -241,6 +257,6 @@
 
   <div id="toast" class="toast hidden" role="status"></div>
 
-  <script type="module" src="./app.js?v=24"></script>
+  <script type="module" src="./app.js?v=25"></script>
 </body>
 </html>
