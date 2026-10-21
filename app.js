@@ -14,7 +14,7 @@ const OWNER_EMOJI = {Mamma:"👩",Babbo:"👨",Manu:"👧",Family:"🏠"};
 const emoji = {Importante:"❤️",Famiglia:"👨‍👩‍👧",Casa:"🏠","Da ricordare":"⏰",Idea:"💡"};
 const klass = {Importante:"important",Famiglia:"family",Casa:"home","Da ricordare":"remember",Idea:"idea"};
 
-let posts = [], events = [], matches = [], postReads = [], selectedReaderFilter = "Family", selectedDate = null, openMenu = null;
+let posts = [], events = [], matches = [], angeloEvents = [], postReads = [], selectedReaderFilter = "Family", selectedDate = null, openMenu = null;
 let currentPerson = null, currentUnreadPostId = null, selectedOwnerView = "Family", matchesNeedsReconnect = false;
 let homeDate = iso();
 const dismissedUnread = new Set();
@@ -70,7 +70,39 @@ function matchAsEvent(m){
   const startDate=romeDateKey(m.start);
   return {id:`match:${m.id}`,title:m.title,start_date:startDate,end_date:startDate,start_time:m.all_day?null:romeTime(m.start),all_day:!!m.all_day,location:m.location||"",description:"",event_owner:"Babbo",source:"match",match:m};
 }
-function calendarItems(){ return [...events,...matches.map(matchAsEvent)]; }
+function angeloAsEvent(g){
+  const allDay=!!g.all_day;
+  const startDate=allDay?String(g.start||"").slice(0,10):romeDateKey(g.start);
+  let endDate=startDate, endTime=null;
+  if(g.end){
+    if(allDay){
+      const d=dateFrom(String(g.end).slice(0,10));
+      d.setDate(d.getDate()-1);
+      endDate=iso(d);
+    }else{
+      endDate=romeDateKey(g.end);
+      endTime=romeTime(g.end);
+    }
+  }
+  const rawDescription=String(g.description||"").trim();
+  const description=/^Angelo$/i.test(rawDescription)?"":rawDescription;
+  return {
+    id:`angelo:${g.id}`,
+    title:g.title||"Evento",
+    start_date:startDate,
+    end_date:endDate,
+    start_time:allDay?null:romeTime(g.start),
+    end_time:endTime,
+    all_day:allDay,
+    location:g.location||"",
+    description,
+    event_owner:"Babbo",
+    source:"angelo",
+    external:true,
+    google_url:g.url||null
+  };
+}
+function calendarItems(){ return [...events,...matches.map(matchAsEvent),...angeloEvents.map(angeloAsEvent)]; }
 function upcomingMatches(){
   const today=todayKey();
   return matches.filter(m=>String(m.start||"").slice(0,10)>=today);
@@ -108,7 +140,7 @@ function renderHero(){
 
 }
 
-function miniEvent(e){ return `<div class="mini-event"><div class="emoji">${e.source==="match"?"🏐":(e.all_day?"🎉":"🕒")}</div><div><strong>${linkify(e.title)}</strong><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}${e.source==="match"?" · Partita del Babbo":""}</small></div></div>`; }
+function miniEvent(e){ return `<div class="mini-event"><div class="emoji">${e.source==="match"?"🏐":(e.source==="angelo"?"👨":(e.all_day?"🎉":"🕒"))}</div><div><strong>${linkify(e.title)}</strong><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}${e.source==="match"?" · Partita del Babbo":e.source==="angelo"?" · Calendario ANGELO":""}</small></div></div>`; }
 
 function postCard(p, controls=true){
   return `<article class="post-card ${p.pinned?"pinned-post":""}" data-id="${p.id}">
@@ -126,11 +158,12 @@ function eventCard(e){
   if(e.source==="match") return matchCard(e.match);
   const d=dateFrom(e.start_date);
   const owner=EVENT_OWNERS.includes(e.event_owner)?e.event_owner:"Family";
+  const external=e.source==="angelo";
   return `<article class="event-card" data-id="${e.id}">
-    <button class="more-button" data-menu="event:${e.id}">•••</button>
+    ${external?"":`<button class="more-button" data-menu="event:${e.id}">•••</button>`}
     <div class="event-row"><div class="event-datebox"><b>${d.getDate()}</b>${d.toLocaleDateString("it-IT",{month:"short"}).toUpperCase()}</div>
-    <div><span class="event-owner-pill">${OWNER_EMOJI[owner]} ${esc(owner)}</span><h3>${linkify(e.title)}</h3><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}</small>${e.description?`<p style="margin-top:7px">${linkify(e.description,true)}</p>`:""}</div></div>
-    ${openMenu===`event:${e.id}` ? menuHtml("event",e.id):""}
+    <div><span class="event-owner-pill">${OWNER_EMOJI[owner]} ${esc(owner)}</span>${external?`<span class="event-owner-pill">Google ANGELO</span>`:""}<h3>${linkify(e.title)}</h3><small>${esc(timeLabel(e))}${e.location?` · ${linkify(e.location)}`:""}</small>${e.description?`<p style="margin-top:7px">${linkify(e.description,true)}</p>`:""}</div></div>
+    ${!external && openMenu===`event:${e.id}` ? menuHtml("event",e.id):""}
   </article>`;
 }
 function matchCard(m){
@@ -269,6 +302,7 @@ async function loadMatches(showToast=false){
     if(!r.ok||!data.connected){
       if(data.needs_reconnect){
         matches=[];
+        angeloEvents=[];
         matchesNeedsReconnect=true;
         renderMatches();
         renderCalendar();
@@ -281,6 +315,7 @@ async function loadMatches(showToast=false){
     }
     matchesNeedsReconnect=false;
     matches=Array.isArray(data.matches)?data.matches:[];
+    angeloEvents=Array.isArray(data.angelo_events)?data.angelo_events:[];
     renderMatches();
     renderCalendar();
     renderHome();
@@ -713,7 +748,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=22",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=23",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
