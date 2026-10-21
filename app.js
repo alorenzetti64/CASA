@@ -15,6 +15,7 @@ const emoji = {Importante:"❤️",Famiglia:"👨‍👩‍👧",Casa:"🏠","Da
 const klass = {Importante:"important",Famiglia:"family",Casa:"home","Da ricordare":"remember",Idea:"idea"};
 
 let posts = [], events = [], matches = [], angeloEvents = [], postReads = [], selectedReaderFilter = "Family", selectedDate = null, openMenu = null;
+let boardSearch = "", eventSearch = "";
 let currentPerson = null, currentUnreadPostId = null, selectedOwnerView = "Family", matchesNeedsReconnect = false;
 let homeDate = iso();
 const dismissedUnread = new Set();
@@ -106,6 +107,18 @@ function calendarItems(){ return [...events,...matches.map(matchAsEvent),...ange
 function upcomingMatches(){
   const today=todayKey();
   return matches.filter(m=>String(m.start||"").slice(0,10)>=today);
+}
+function searchText(v=""){
+  return String(v??"")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g,"")
+    .toLowerCase()
+    .trim();
+}
+function containsSearch(values, query){
+  const q=searchText(query);
+  if(!q) return true;
+  return searchText(values.filter(Boolean).join(" ")).includes(q);
 }
 function recipientsOf(p){ return Array.isArray(p.recipients)&&p.recipients.length?p.recipients:AUTHORS; }
 function readsOf(p){ return new Set(postReads.filter(r=>r.post_id===p.id).map(r=>r.reader)); }
@@ -268,9 +281,16 @@ function postMatchesReaderFilter(p, filter){
 function renderBoard(){
   const filters=["Family","Mamma","Babbo","Manuela"];
   $("#categoryFilters").innerHTML=filters.map(name=>`<button class="filter-chip ${name===selectedReaderFilter?"active":""}" data-reader-filter="${name}">${name}</button>`).join("");
-  const base=posts.filter(p=>postMatchesReaderFilter(p,selectedReaderFilter));
+  const base=posts
+    .filter(p=>postMatchesReaderFilter(p,selectedReaderFilter))
+    .filter(p=>containsSearch([
+      p.title,p.body,p.category,p.author,...recipientsOf(p)
+    ],boardSearch));
   const list=sortBoardPosts(base);
-  $("#postList").innerHTML=list.length?list.map(p=>postCard(p,true)).join(""):`<div class="empty-state">Nessun annuncio per ${esc(selectedReaderFilter)}.</div>`;
+  const empty=boardSearch
+    ? `Nessun annuncio contiene “${esc(boardSearch)}”.`
+    : `Nessun annuncio per ${esc(selectedReaderFilter)}.`;
+  $("#postList").innerHTML=list.length?list.map(p=>postCard(p,true)).join(""):`<div class="empty-state">${empty}</div>`;
   if(posts[0]) localStorage.setItem("casaLastSeenPostTs",String(new Date(posts[0].created_at).getTime()));
 }
 
@@ -287,10 +307,23 @@ function renderCalendar(){
   $("#calendarGrid").innerHTML=cells.join("");
   let list;
   const all=calendarItems();
-  if(selectedDate){ list=all.filter(e=>onDate(e,selectedDate)); $("#calendarListTitle").textContent="Eventi del "+dateFrom(selectedDate).toLocaleDateString("it-IT",{day:"numeric",month:"long"}); }
-  else { list=all.filter(e=>(e.end_date||e.start_date)>=todayKey()); $("#calendarListTitle").textContent="In arrivo"; }
+  if(eventSearch){
+    list=all.filter(e=>containsSearch([
+      e.title,e.description,e.location,e.event_owner,e.source,
+      e.source==="match"?"partita babbo superlega":"",
+      e.source==="angelo"?"google angelo babbo":""
+    ],eventSearch));
+    $("#calendarListTitle").textContent="Risultati ricerca";
+  }else if(selectedDate){
+    list=all.filter(e=>onDate(e,selectedDate));
+    $("#calendarListTitle").textContent="Eventi del "+dateFrom(selectedDate).toLocaleDateString("it-IT",{day:"numeric",month:"long"});
+  }else{
+    list=all.filter(e=>(e.end_date||e.start_date)>=todayKey());
+    $("#calendarListTitle").textContent="In arrivo";
+  }
   list.sort((a,b)=>(a.start_date+(a.start_time||"")).localeCompare(b.start_date+(b.start_time||"")));
-  $("#eventList").innerHTML=list.length?list.map(eventCard).join(""):`<div class="empty-state">Nessun evento da mostrare.</div>`;
+  const empty=eventSearch?`Nessun evento contiene “${esc(eventSearch)}”.`:"Nessun evento da mostrare.";
+  $("#eventList").innerHTML=list.length?list.map(eventCard).join(""):`<div class="empty-state">${empty}</div>`;
 }
 
 function renderAll(){ renderHome(); renderBoard(); renderCalendar(); renderMatches(); renderOwnerEvents(); updateNotificationUI(); updatePersonUI(); }
@@ -714,6 +747,8 @@ function bind(){
     if(ev.target.closest("[data-close-form]")){closeForm();return;}
     const add=ev.target.closest("[data-add]"); if(add){openForm(add.dataset.add);return;}
     const chip=ev.target.closest("[data-reader-filter]"); if(chip){selectedReaderFilter=chip.dataset.readerFilter;renderBoard();return;}
+    if(ev.target.closest("#clearBoardSearch")){boardSearch="";$("#boardSearch").value="";renderBoard();return;}
+    if(ev.target.closest("#clearEventSearch")){eventSearch="";$("#eventSearch").value="";renderCalendar();return;}
     const d=ev.target.closest("[data-date]"); if(d){selectedDate=selectedDate===d.dataset.date?null:d.dataset.date;renderCalendar();return;}
     const eventOwner=ev.target.closest("[data-event-owner]"); if(eventOwner){ eventOwner.closest(".field").querySelectorAll(".event-owner-pill-button").forEach(x=>x.classList.toggle("active",x===eventOwner)); eventOwner.closest(".field").querySelector("input[name=event_owner]").value=eventOwner.dataset.eventOwner; return; }
     const a=ev.target.closest("[data-author]"); if(a){ $(".author-pill").forEach(x=>x.classList.toggle("active",x===a)); a.closest(".field").querySelector("input[name=author]").value=a.dataset.author; return; }
@@ -724,6 +759,8 @@ function bind(){
     const del=ev.target.closest("[data-delete]"); if(del){const [type,id]=del.dataset.delete.split(":"); await removeItem(type,id);return;}
   });
   $("#editorForm").addEventListener("submit",saveForm);
+  $("#boardSearch").addEventListener("input",e=>{boardSearch=e.target.value;$("#clearBoardSearch").classList.toggle("hidden",!boardSearch);renderBoard();});
+  $("#eventSearch").addEventListener("input",e=>{eventSearch=e.target.value;$("#clearEventSearch").classList.toggle("hidden",!eventSearch);renderCalendar();});
   $("#prevMonth").addEventListener("click",()=>{cursor.setMonth(cursor.getMonth()-1);selectedDate=null;renderCalendar();});
   $("#nextMonth").addEventListener("click",()=>{cursor.setMonth(cursor.getMonth()+1);selectedDate=null;renderCalendar();});
   $("#enableNotifications").addEventListener("click",enablePush);
@@ -748,7 +785,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=23",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=24",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
