@@ -254,3 +254,10 @@ button { color: inherit; }
 
 .today-loading { padding:14px 12px; border-radius:17px; background:#faf7f2; color:var(--muted); text-align:center; font-size:13px; }
 .today-arrow:disabled { opacity:.35; cursor:default; transform:none; }
+
+.search-box { position:relative; display:flex; align-items:center; gap:8px; margin:0 0 12px; background:white; border:1px solid var(--line); border-radius:17px; box-shadow:0 5px 18px rgba(36,50,75,.06); padding:0 10px; }
+.calendar-search-box { margin-bottom:14px; }
+.search-icon { flex:0 0 auto; color:var(--muted); font-size:22px; line-height:1; transform:rotate(-18deg); }
+.search-box input { width:100%; min-width:0; border:0; background:transparent; outline:none; padding:12px 2px; font:inherit; color:var(--ink); }
+.search-box input::placeholder { color:#9aa0aa; }
+.search-clear { flex:0 0 auto; width:30px; height:30px; border:0; border-radius:50%; background:#f5f1ed; color:var(--muted); font-size:20px; line-height:1; cursor:pointer; }
