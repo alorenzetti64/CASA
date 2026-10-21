@@ -14,7 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Fredoka:wght@500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="./styles.css?v=23" />
+  <link rel="stylesheet" href="./styles.css?v=24" />
 </head>
 <body>
   <div class="app-shell">
@@ -114,6 +114,11 @@
           </div>
           <button class="circle-add" data-add="post" aria-label="Aggiungi notizia">+</button>
         </div>
+        <div class="search-box">
+          <span class="search-icon">⌕</span>
+          <input id="boardSearch" type="search" inputmode="search" autocomplete="off" placeholder="Cerca nella bacheca…" aria-label="Cerca nella bacheca">
+          <button id="clearBoardSearch" class="search-clear hidden" type="button" aria-label="Cancella ricerca">×</button>
+        </div>
         <div class="reader-filter-wrap">
           <span>Chi deve leggere l’avviso:</span>
           <div id="categoryFilters" class="filter-row"></div>
@@ -152,6 +157,12 @@
             <p>I nostri impegni, tutti insieme.</p>
           </div>
           <button class="circle-add" data-add="event" aria-label="Aggiungi evento">+</button>
+        </div>
+
+        <div class="search-box calendar-search-box">
+          <span class="search-icon">⌕</span>
+          <input id="eventSearch" type="search" inputmode="search" autocomplete="off" placeholder="Cerca un evento…" aria-label="Cerca un evento">
+          <button id="clearEventSearch" class="search-clear hidden" type="button" aria-label="Cancella ricerca">×</button>
         </div>
 
         <section class="calendar-card card">
@@ -230,6 +241,6 @@
 
   <div id="toast" class="toast hidden" role="status"></div>
 
-  <script type="module" src="./app.js?v=23"></script>
+  <script type="module" src="./app.js?v=24"></script>
 </body>
 </html>
