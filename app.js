@@ -19,6 +19,7 @@ let boardSearch = "", eventSearch = "";
 let currentPerson = null, currentUnreadPostId = null, selectedOwnerView = "Family", matchesNeedsReconnect = false;
 let homeDate = iso();
 const dismissedUnread = new Set();
+const WHATS_NEW_KEY = "casaWhatsNewSearchV1";
 let cursor = new Date(); cursor.setDate(1);
 
 const $ = s => document.querySelector(s);
@@ -451,6 +452,7 @@ function renderUnreadButtons(p){
   }).join("");
 }
 function showUnreadPopup(){
+  if(!$("#whatsNewSheet").classList.contains("hidden")) return;
   if(!$("#unreadSheet").classList.contains("hidden")) return;
   const p=incompletePosts()[0];
   if(!p) return;
@@ -465,6 +467,16 @@ function dismissUnread(){
   if(currentUnreadPostId) dismissedUnread.add(currentUnreadPostId);
   currentUnreadPostId=null;
   $("#unreadSheet").classList.add("hidden");
+}
+function showWhatsNewPopup(){
+  if(localStorage.getItem(WHATS_NEW_KEY)==="1") return;
+  $("#whatsNewNever").checked=false;
+  $("#whatsNewSheet").classList.remove("hidden");
+}
+function closeWhatsNew(){
+  if($("#whatsNewNever").checked) localStorage.setItem(WHATS_NEW_KEY,"1");
+  $("#whatsNewSheet").classList.add("hidden");
+  showUnreadPopup();
 }
 async function markReaderRead(reader){
   if(!currentUnreadPostId||!AUTHORS.includes(reader)) return;
@@ -743,6 +755,7 @@ function bind(){
     if(ev.target.closest("#todayPrevDay")){shiftHomeDate(-1);return;}
     if(ev.target.closest("#todayNextDay")){shiftHomeDate(1);return;}
     if(ev.target.closest("#unreadLater")){dismissUnread();return;}
+    if(ev.target.closest("[data-close-whats-new]")){closeWhatsNew();return;}
     if(ev.target.closest("[data-close-sheet]")){closeChoice();return;}
     if(ev.target.closest("[data-close-form]")){closeForm();return;}
     const add=ev.target.closest("[data-add]"); if(add){openForm(add.dataset.add);return;}
@@ -769,6 +782,7 @@ function bind(){
   $("#formSheet").addEventListener("click",e=>{if(e.target.id==="formSheet")closeForm();});
   $("#personSheet").addEventListener("click",e=>{if(e.target.id==="personSheet"&&currentPerson)e.currentTarget.classList.add("hidden");});
   $("#unreadSheet").addEventListener("click",e=>{if(e.target.id==="unreadSheet")dismissUnread();});
+  $("#whatsNewSheet").addEventListener("click",e=>{if(e.target.id==="whatsNewSheet")closeWhatsNew();});
 }
 function realtime(){
   supabase.channel("casa-family-live")
@@ -785,7 +799,7 @@ async function init(){
 
   bind();
   if("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js?v=24",{updateViaCache:"none"})
+    navigator.serviceWorker.register("./sw.js?v=25",{updateViaCache:"none"})
       .then(reg=>reg.update())
       .catch(console.error);
   }
@@ -796,6 +810,7 @@ async function init(){
   setView(initialUrl.searchParams.get("view")||"home",false);
   updatePersonUI();
   updateNotificationUI();
+  showWhatsNewPopup();
   await loadData();
   if(justConnected){
     const clean=new URL(location.href);
