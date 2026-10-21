@@ -261,3 +261,16 @@ button { color: inherit; }
 .search-box input { width:100%; min-width:0; border:0; background:transparent; outline:none; padding:12px 2px; font:inherit; color:var(--ink); }
 .search-box input::placeholder { color:#9aa0aa; }
 .search-clear { flex:0 0 auto; width:30px; height:30px; border:0; border-radius:50%; background:#f5f1ed; color:var(--muted); font-size:20px; line-height:1; cursor:pointer; }
+
+.whats-new-sheet { padding-top:26px; }
+.whats-new-icon { width:54px; height:54px; display:grid; place-items:center; border-radius:18px; background:linear-gradient(145deg,#fff2c9,#fff9e7); font-size:28px; margin-bottom:10px; }
+.whats-new-sheet h2 { font-family:"Fredoka"; font-size:26px; margin:5px 42px 8px 0; }
+.whats-new-intro { margin:0 0 15px; color:var(--muted); line-height:1.45; }
+.whats-new-list { display:grid; gap:10px; }
+.whats-new-list > div { display:grid; grid-template-columns:40px 1fr; gap:10px; align-items:start; background:#faf7f2; border-radius:17px; padding:12px; }
+.whats-new-list > div > span { width:40px; height:40px; display:grid; place-items:center; background:white; border-radius:13px; font-size:21px; }
+.whats-new-list p { margin:0; line-height:1.4; font-size:13px; color:#526078; }
+.whats-new-list strong { color:var(--ink); }
+.whats-new-never { margin:16px 0 12px; padding:11px 12px; border:1px solid var(--line); border-radius:14px; display:flex; align-items:center; gap:9px; font-size:13px; font-weight:700; cursor:pointer; }
+.whats-new-never input { width:18px; height:18px; flex:0 0 auto; }
+.whats-new-ok { width:100%; }
